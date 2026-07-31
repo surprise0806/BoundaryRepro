@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "boundary-repro"
-version = "0.5.1"
+version = "0.5.2"
 description = "Stateful and resumable repository issue repair agent"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"

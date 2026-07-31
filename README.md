@@ -1,4 +1,4 @@
-# BoundaryRepro v0.5.1
+# BoundaryRepro v0.5.2
 
 BoundaryRepro is a stateful repository issue repair agent built with LangGraph.
 It accepts a constrained public task, reproduces the failure in a disposable
@@ -196,18 +196,47 @@ boundary-repair run `
   --task path\to\task.json `
   --thread-id groq-run-001 `
   --brain groq `
-  --model llama-3.3-70b-versatile `
+  --model openai/gpt-oss-120b `
   --state-dir .boundary_state\groq-run-001 `
   --json-out .boundary_state\exports\groq-run-001.json
 ```
 
-Groq returns typed JSON validated as `RepairPlan` and `PatchProposal`. The
-current implementation uses JSON response formatting, not provider-native
-function calling. `repair_tool_schemas()` is a provider-neutral interface
-contract and is not passed as Groq's `tools=` argument.
+`openai/gpt-oss-20b` and `openai/gpt-oss-120b` use Groq Chat Completions
+strict JSON Schema Structured Outputs. `aplan` supplies a strict
+`RepairPlan` output contract whose `read_tasks` can express only
+`list_files` with empty arguments, `search_code` with one string `query`, or
+`read_file` with one string `path`. `apatch` supplies the checked strict
+`PatchProposal` schema. Both responses are validated locally before they
+cross into the runtime.
+
+The provider produces only plan or patch data. It does not register or execute
+Groq-native tools: no `tools=` value is sent, and planned `ReadTask` records
+are executed later by the LangGraph Harness. This is not a Groq native
+function-calling agent. Other Groq models retain an explicit JSON Object Mode
+fallback with the output schema in the prompt and the same local validation;
+they do not fall back to scripted behavior.
+
+The default model is now `openai/gpt-oss-120b`;
+`llama-3.3-70b-versatile` is no longer the default.
 
 There is no silent fallback from Groq to scripted behavior. Provider or schema
 failure cannot be marked completed and cannot write long-term memory.
+
+### Real Groq validation
+
+One clean integration run used `openai/gpt-oss-120b` on the bundled benchmark
+and finished with `status=completed`. The Harness dispatched five read workers
+with a maximum observed concurrency of three. Four workers succeeded; one
+`read_file` worker failed because `tests/.env` did not exist, and that failure
+remains visible in the sanitized trace rather than being removed. Public,
+regression, and hidden tests all passed. The run had `memory_hits=0`, was marked
+`evaluation_eligible=true`, and recorded an observed elapsed time of 15.37
+seconds.
+
+This is one clean real-provider integration run, not evidence of a success
+rate or generalization capability. The current behavioral verification gate
+does not include lint or static analysis. Its recursively sanitized trace is
+checked in as `examples/groq_repair_trace.sample.json`.
 
 ## 9. Tests
 

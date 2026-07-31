@@ -42,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
             "not a real-model score"
         ),
     )
-    run.add_argument("--model", default="llama-3.3-70b-versatile")
+    run.add_argument("--model", default="openai/gpt-oss-120b")
     run.add_argument("--pause-after", choices=sorted(PAUSE_NODES))
     run.add_argument(
         "--json-out",

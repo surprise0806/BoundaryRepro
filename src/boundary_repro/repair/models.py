@@ -160,6 +160,55 @@ class RepairPlan(StrictModel):
     read_tasks: list[ReadTask]
 
 
+class ListFilesArguments(StrictModel):
+    """The only valid argument object for a planned list_files read."""
+
+
+class SearchCodeArguments(StrictModel):
+    """The only valid argument object for a planned search_code read."""
+
+    query: str
+
+
+class ReadFileArguments(StrictModel):
+    """The only valid argument object for a planned read_file read."""
+
+    path: str
+
+
+class ListFilesReadTask(StrictModel):
+    """Strict provider-boundary representation of a list_files request."""
+
+    task_id: str
+    tool: Literal["list_files"]
+    arguments: ListFilesArguments
+
+
+class SearchCodeReadTask(StrictModel):
+    """Strict provider-boundary representation of a search_code request."""
+
+    task_id: str
+    tool: Literal["search_code"]
+    arguments: SearchCodeArguments
+
+
+class ReadFileReadTask(StrictModel):
+    """Strict provider-boundary representation of a read_file request."""
+
+    task_id: str
+    tool: Literal["read_file"]
+    arguments: ReadFileArguments
+
+
+class StrictRepairPlanOutput(StrictModel):
+    """Groq-compatible plan schema before conversion to RepairPlan."""
+
+    summary: str
+    read_tasks: list[
+        ListFilesReadTask | SearchCodeReadTask | ReadFileReadTask
+    ]
+
+
 class PatchProposal(StrictModel):
     path: str
     old_text: str

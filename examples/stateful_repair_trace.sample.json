@@ -1,6 +1,6 @@
 {
   "sample_metadata": {
-    "boundary_repro_version": "0.5.1",
+    "boundary_repro_version": "0.5.2",
     "provider": "scripted",
     "sanitized": true,
     "evaluation_note": "Deterministic demo only; not an LLM score.",
@@ -87,9 +87,9 @@
           ],
           "timeout": 20
         },
-        "created_at": "2026-07-30T14:34:06.655745+00:00",
+        "created_at": "2026-07-31T08:33:53.392826+00:00",
         "duration_ms": 0,
-        "event_id": "event-808b1c294e4783581362"
+        "event_id": "event-b859f4ac35ef90c48188"
       },
       {
         "actor": "tool",
@@ -102,13 +102,13 @@
         "result": {
           "status": "fail",
           "returncode": 1,
-          "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ERROR\n\n======================================================================\nERROR: test_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\tests\\test_public.py\", line 20, in test_default_decodes_utf8_when_platform_locale_is_ascii\n    self.assertEqual(read_env(dotenv), \"ACCOUNT_NAME=涓婃捣\\n\")\n                     ^^^^^^^^^^^^^^^^\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\dotenv_loader.py\", line 17, in read_env\n    return Path(path).read_text(encoding=selected)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\pathlib.py\", line 1028, in read_text\n    return f.read()\n           ^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\encodings\\ascii.py\", line 26, in decode\n    return codecs.ascii_decode(input, self.errors)[0]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeDecodeError: 'ascii' codec can't decode byte 0xe4 in position 13: ordinal not in range(128)\n\n----------------------------------------------------------------------\nRan 1 test in 0.020s\n\nFAILED (errors=1)",
-          "duration_ms": 232,
+          "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ERROR\n\n======================================================================\nERROR: test_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\tests\\test_public.py\", line 20, in test_default_decodes_utf8_when_platform_locale_is_ascii\n    self.assertEqual(read_env(dotenv), \"ACCOUNT_NAME=涓婃捣\\n\")\n                     ^^^^^^^^^^^^^^^^\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\dotenv_loader.py\", line 17, in read_env\n    return Path(path).read_text(encoding=selected)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\pathlib.py\", line 1028, in read_text\n    return f.read()\n           ^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\encodings\\ascii.py\", line 26, in decode\n    return codecs.ascii_decode(input, self.errors)[0]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeDecodeError: 'ascii' codec can't decode byte 0xe4 in position 13: ordinal not in range(128)\n\n----------------------------------------------------------------------\nRan 1 test in 0.010s\n\nFAILED (errors=1)",
+          "duration_ms": 219,
           "command_kind": "public"
         },
-        "created_at": "2026-07-30T14:34:06.900073+00:00",
-        "duration_ms": 240,
-        "event_id": "event-1b07c6e0584ef2982659"
+        "created_at": "2026-07-31T08:33:53.621911+00:00",
+        "duration_ms": 228,
+        "event_id": "event-bd136bcdb2153803cd04"
       },
       {
         "actor": "verifier",
@@ -121,9 +121,9 @@
           "diff": "",
           "changed_paths": []
         },
-        "created_at": "2026-07-30T14:34:06.900073+00:00",
+        "created_at": "2026-07-31T08:33:53.621911+00:00",
         "duration_ms": 0,
-        "event_id": "event-6f03b8f0b5a4399a9822"
+        "event_id": "event-ae2a59f90c8913ec30f0"
       },
       {
         "actor": "memory",
@@ -133,9 +133,9 @@
         "result": {
           "memories": []
         },
-        "created_at": "2026-07-30T14:34:06.907824+00:00",
+        "created_at": "2026-07-31T08:33:53.632349+00:00",
         "duration_ms": 0,
-        "event_id": "event-106bae6d6c27cbcd50cc"
+        "event_id": "event-771e0d289269c5454cb9"
       },
       {
         "actor": "provider",
@@ -147,12 +147,13 @@
           "attempt": 1,
           "status": "success",
           "timeout_s": 60.0,
-          "remaining_before_attempt_s": 179.7446367740631,
+          "remaining_before_attempt_s": 179.75208282470703,
+          "attempt_limited_by_deadline": false,
           "duration_ms": 0
         },
-        "created_at": "2026-07-30T14:34:06.910019+00:00",
+        "created_at": "2026-07-31T08:33:53.634512+00:00",
         "duration_ms": 0,
-        "event_id": "event-152ec3ea7053464ea92c"
+        "event_id": "event-fe2f723365a9ca2950a9"
       },
       {
         "event_id": "tool-394622bb23eabe89841d",
@@ -171,9 +172,9 @@
           ],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.917201+00:00",
-        "finished_at": "2026-07-30T14:34:06.918199+00:00",
-        "duration_ms": 1,
+        "started_at": "2026-07-31T08:33:53.645767+00:00",
+        "finished_at": "2026-07-31T08:33:53.648969+00:00",
+        "duration_ms": 2,
         "active_read_workers": 1
       },
       {
@@ -192,10 +193,10 @@
           "total_lines": 17,
           "content": "1: \"\"\"Minimal third-party-issue reproduction; not copied upstream source code.\"\"\"\n2: \n3: from __future__ import annotations\n4: \n5: import locale\n6: from pathlib import Path\n7: \n8: DEFAULT_ENCODING: str | None = None\n9: \n10: \n11: def read_env(path: str | Path, *, encoding: str | None = None) -> str:\n12:     \"\"\"Read one dotenv-style text file.\"\"\"\n13: \n14:     selected = encoding if encoding is not None else DEFAULT_ENCODING\n15:     if selected is None:\n16:         selected = locale.getpreferredencoding(False)\n17:     return Path(path).read_text(encoding=selected)"
         },
-        "started_at": "2026-07-30T14:34:06.919364+00:00",
-        "finished_at": "2026-07-30T14:34:06.920846+00:00",
-        "duration_ms": 1,
-        "active_read_workers": 1
+        "started_at": "2026-07-31T08:33:53.647794+00:00",
+        "finished_at": "2026-07-31T08:33:53.652586+00:00",
+        "duration_ms": 4,
+        "active_read_workers": 2
       },
       {
         "event_id": "tool-3f89082665b62bbb1f97",
@@ -218,9 +219,9 @@
           ],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.919364+00:00",
-        "finished_at": "2026-07-30T14:34:06.924258+00:00",
-        "duration_ms": 4,
+        "started_at": "2026-07-31T08:33:53.650034+00:00",
+        "finished_at": "2026-07-31T08:33:53.656016+00:00",
+        "duration_ms": 6,
         "active_read_workers": 2
       },
       {
@@ -264,9 +265,9 @@
           ],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.920846+00:00",
-        "finished_at": "2026-07-30T14:34:06.926751+00:00",
-        "duration_ms": 5,
+        "started_at": "2026-07-31T08:33:53.652586+00:00",
+        "finished_at": "2026-07-31T08:33:53.657065+00:00",
+        "duration_ms": 4,
         "active_read_workers": 2
       },
       {
@@ -284,9 +285,9 @@
           "matches": [],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.921842+00:00",
-        "finished_at": "2026-07-30T14:34:06.927885+00:00",
-        "duration_ms": 6,
+        "started_at": "2026-07-31T08:33:53.652586+00:00",
+        "finished_at": "2026-07-31T08:33:53.657065+00:00",
+        "duration_ms": 4,
         "active_read_workers": 3
       },
       {
@@ -304,9 +305,9 @@
           "matches": [],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.924685+00:00",
-        "finished_at": "2026-07-30T14:34:06.930114+00:00",
-        "duration_ms": 4,
+        "started_at": "2026-07-31T08:33:53.656016+00:00",
+        "finished_at": "2026-07-31T08:33:53.659248+00:00",
+        "duration_ms": 3,
         "active_read_workers": 3
       },
       {
@@ -319,12 +320,13 @@
           "attempt": 1,
           "status": "success",
           "timeout_s": 60.0,
-          "remaining_before_attempt_s": 179.72235941886902,
+          "remaining_before_attempt_s": 179.72430443763733,
+          "attempt_limited_by_deadline": false,
           "duration_ms": 0
         },
-        "created_at": "2026-07-30T14:34:06.941232+00:00",
+        "created_at": "2026-07-31T08:33:53.670257+00:00",
         "duration_ms": 0,
-        "event_id": "event-83cae4bc77f25e6225b4"
+        "event_id": "event-1a043e117209ed2af3a1"
       },
       {
         "actor": "tool",
@@ -341,9 +343,9 @@
           "before_sha256": "48b47c32dedcdea695e13f1f8b805df1676de4bade2c97beac6725771169ec1b",
           "after_sha256": "c00c6f1c568e8b61fc7c68ddd5a7307280e6cdbba5205a233201845f922ee820"
         },
-        "created_at": "2026-07-30T14:34:06.941232+00:00",
-        "duration_ms": 9,
-        "event_id": "event-f3f001c0fabdb50c5cf3"
+        "created_at": "2026-07-31T08:33:53.670257+00:00",
+        "duration_ms": 8,
+        "event_id": "event-4d33bb3e92ae0eecec97"
       },
       {
         "actor": "tool",
@@ -357,9 +359,9 @@
             "dotenv_loader.py"
           ]
         },
-        "created_at": "2026-07-30T14:34:06.941232+00:00",
+        "created_at": "2026-07-31T08:33:53.670257+00:00",
         "duration_ms": 0,
-        "event_id": "event-2b43be1bfe710dbb14c3"
+        "event_id": "event-4ef3765e052b923a7647"
       },
       {
         "actor": "verifier",
@@ -373,9 +375,9 @@
             "dotenv_loader.py"
           ]
         },
-        "created_at": "2026-07-30T14:34:06.948946+00:00",
+        "created_at": "2026-07-31T08:33:53.677280+00:00",
         "duration_ms": 0,
-        "event_id": "event-5b47693d4627d6bb4d57"
+        "event_id": "event-f19f8334f23bf94ee435"
       },
       {
         "actor": "verifier",
@@ -388,14 +390,14 @@
           "result": {
             "status": "pass",
             "returncode": 0,
-            "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.008s\n\nOK",
-            "duration_ms": 198,
+            "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.014s\n\nOK",
+            "duration_ms": 201,
             "command_kind": "public"
           }
         },
-        "created_at": "2026-07-30T14:34:07.147909+00:00",
+        "created_at": "2026-07-31T08:33:53.879510+00:00",
         "duration_ms": 0,
-        "event_id": "event-cc0c1c856240c427706b"
+        "event_id": "event-e574009e9ed5bb6e7774"
       },
       {
         "actor": "verifier",
@@ -408,14 +410,14 @@
           "result": {
             "status": "pass",
             "returncode": 0,
-            "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ok\ntest_explicit_non_utf8_encoding_is_preserved (test_regression.ExplicitEncodingRegressionTests.test_explicit_non_utf8_encoding_is_preserved) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.010s\n\nOK",
-            "duration_ms": 528,
+            "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ok\ntest_explicit_non_utf8_encoding_is_preserved (test_regression.ExplicitEncodingRegressionTests.test_explicit_non_utf8_encoding_is_preserved) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.046s\n\nOK",
+            "duration_ms": 245,
             "command_kind": "regression"
           }
         },
-        "created_at": "2026-07-30T14:34:07.676977+00:00",
+        "created_at": "2026-07-31T08:33:54.124814+00:00",
         "duration_ms": 0,
-        "event_id": "event-d3fa48266a3fa61e6680"
+        "event_id": "event-5e93a63027481a79e42a"
       },
       {
         "actor": "verifier",
@@ -425,12 +427,12 @@
         "result": {
           "status": "pass",
           "returncode": 0,
-          "duration_ms": 214,
-          "output_sha256": "2ae5ccfb60ed1b1aaf80d946fe88461bbe2484694104e7e539dc48b38bb09ce7"
+          "duration_ms": 254,
+          "output_sha256": "6c950e6d3fbd7d1eca736e72f802ae939c441b6bfdd575f68dfe5b3120f0176b"
         },
-        "created_at": "2026-07-30T14:34:07.892210+00:00",
+        "created_at": "2026-07-31T08:33:54.380438+00:00",
         "duration_ms": 0,
-        "event_id": "event-1ca11e88d41057781428"
+        "event_id": "event-8ed57761837c1e9e851b"
       },
       {
         "actor": "verifier",
@@ -448,9 +450,9 @@
             ]
           }
         },
-        "created_at": "2026-07-30T14:34:07.896277+00:00",
+        "created_at": "2026-07-31T08:33:54.385589+00:00",
         "duration_ms": 0,
-        "event_id": "event-ad1f92a5c4c7a30f6043"
+        "event_id": "event-32ad7d36b3ae092ef1fd"
       },
       {
         "actor": "memory",
@@ -462,16 +464,16 @@
           "source_provider": "scripted",
           "source_task_id": "blind-python-dotenv-207"
         },
-        "created_at": "2026-07-30T14:34:07.912359+00:00",
+        "created_at": "2026-07-31T08:33:54.402170+00:00",
         "duration_ms": 0,
-        "event_id": "event-80e1eb2915a1f46cd499"
+        "event_id": "event-7e51701ad5536b4e5829"
       }
     ],
     "baseline_result": {
       "status": "fail",
       "returncode": 1,
-      "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ERROR\n\n======================================================================\nERROR: test_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\tests\\test_public.py\", line 20, in test_default_decodes_utf8_when_platform_locale_is_ascii\n    self.assertEqual(read_env(dotenv), \"ACCOUNT_NAME=涓婃捣\\n\")\n                     ^^^^^^^^^^^^^^^^\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\dotenv_loader.py\", line 17, in read_env\n    return Path(path).read_text(encoding=selected)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\pathlib.py\", line 1028, in read_text\n    return f.read()\n           ^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\encodings\\ascii.py\", line 26, in decode\n    return codecs.ascii_decode(input, self.errors)[0]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeDecodeError: 'ascii' codec can't decode byte 0xe4 in position 13: ordinal not in range(128)\n\n----------------------------------------------------------------------\nRan 1 test in 0.020s\n\nFAILED (errors=1)",
-      "duration_ms": 232,
+      "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ERROR\n\n======================================================================\nERROR: test_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\tests\\test_public.py\", line 20, in test_default_decodes_utf8_when_platform_locale_is_ascii\n    self.assertEqual(read_env(dotenv), \"ACCOUNT_NAME=涓婃捣\\n\")\n                     ^^^^^^^^^^^^^^^^\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\dotenv_loader.py\", line 17, in read_env\n    return Path(path).read_text(encoding=selected)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\pathlib.py\", line 1028, in read_text\n    return f.read()\n           ^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\encodings\\ascii.py\", line 26, in decode\n    return codecs.ascii_decode(input, self.errors)[0]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeDecodeError: 'ascii' codec can't decode byte 0xe4 in position 13: ordinal not in range(128)\n\n----------------------------------------------------------------------\nRan 1 test in 0.010s\n\nFAILED (errors=1)",
+      "duration_ms": 219,
       "command_kind": "public"
     },
     "memory_hits": [],
@@ -568,9 +570,9 @@
           ],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.917201+00:00",
-        "finished_at": "2026-07-30T14:34:06.918199+00:00",
-        "duration_ms": 1,
+        "started_at": "2026-07-31T08:33:53.645767+00:00",
+        "finished_at": "2026-07-31T08:33:53.648969+00:00",
+        "duration_ms": 2,
         "active_read_workers": 1
       },
       {
@@ -589,10 +591,10 @@
           "total_lines": 17,
           "content": "1: \"\"\"Minimal third-party-issue reproduction; not copied upstream source code.\"\"\"\n2: \n3: from __future__ import annotations\n4: \n5: import locale\n6: from pathlib import Path\n7: \n8: DEFAULT_ENCODING: str | None = None\n9: \n10: \n11: def read_env(path: str | Path, *, encoding: str | None = None) -> str:\n12:     \"\"\"Read one dotenv-style text file.\"\"\"\n13: \n14:     selected = encoding if encoding is not None else DEFAULT_ENCODING\n15:     if selected is None:\n16:         selected = locale.getpreferredencoding(False)\n17:     return Path(path).read_text(encoding=selected)"
         },
-        "started_at": "2026-07-30T14:34:06.919364+00:00",
-        "finished_at": "2026-07-30T14:34:06.920846+00:00",
-        "duration_ms": 1,
-        "active_read_workers": 1
+        "started_at": "2026-07-31T08:33:53.647794+00:00",
+        "finished_at": "2026-07-31T08:33:53.652586+00:00",
+        "duration_ms": 4,
+        "active_read_workers": 2
       },
       {
         "evidence_id": "repair-ev-3f89082665b62bbb1f97",
@@ -615,9 +617,9 @@
           ],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.919364+00:00",
-        "finished_at": "2026-07-30T14:34:06.924258+00:00",
-        "duration_ms": 4,
+        "started_at": "2026-07-31T08:33:53.650034+00:00",
+        "finished_at": "2026-07-31T08:33:53.656016+00:00",
+        "duration_ms": 6,
         "active_read_workers": 2
       },
       {
@@ -661,9 +663,9 @@
           ],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.920846+00:00",
-        "finished_at": "2026-07-30T14:34:06.926751+00:00",
-        "duration_ms": 5,
+        "started_at": "2026-07-31T08:33:53.652586+00:00",
+        "finished_at": "2026-07-31T08:33:53.657065+00:00",
+        "duration_ms": 4,
         "active_read_workers": 2
       },
       {
@@ -681,9 +683,9 @@
           "matches": [],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.921842+00:00",
-        "finished_at": "2026-07-30T14:34:06.927885+00:00",
-        "duration_ms": 6,
+        "started_at": "2026-07-31T08:33:53.652586+00:00",
+        "finished_at": "2026-07-31T08:33:53.657065+00:00",
+        "duration_ms": 4,
         "active_read_workers": 3
       },
       {
@@ -701,9 +703,9 @@
           "matches": [],
           "truncated": false
         },
-        "started_at": "2026-07-30T14:34:06.924685+00:00",
-        "finished_at": "2026-07-30T14:34:06.930114+00:00",
-        "duration_ms": 4,
+        "started_at": "2026-07-31T08:33:53.656016+00:00",
+        "finished_at": "2026-07-31T08:33:53.659248+00:00",
+        "duration_ms": 3,
         "active_read_workers": 3
       }
     ],
@@ -761,12 +763,12 @@
       "memory_id": "repair-mem-cc20fc5e735810dc1111",
       "memory_source_provider": "scripted",
       "memory_source_task_id": "blind-python-dotenv-207",
-      "elapsed_ms": 1260,
+      "elapsed_ms": 1016,
       "memory_assisted": false,
       "evaluation_eligible": false
     },
-    "started_at_epoch": 1785422046.653471,
-    "deadline_at_epoch": 1785422226.653471,
+    "started_at_epoch": 1785486833.385584,
+    "deadline_at_epoch": 1785487013.385584,
     "paused_at_epoch": null,
     "paused_after_node": null,
     "total_paused_s": 0.0
