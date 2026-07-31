@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environments and secrets
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Runtime state
+.cache/
+.boundary_state/
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# Packaging
+build/
+dist/
+*.egg-info/

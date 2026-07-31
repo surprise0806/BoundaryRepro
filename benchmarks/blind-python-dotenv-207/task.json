@@ -1,0 +1,25 @@
+{
+  "task_id": "blind-python-dotenv-207",
+  "issue_text": "A UTF-8 .env file can raise UnicodeDecodeError on Windows when the locale codec is not UTF-8. Reading an .env file without an explicit encoding should default to UTF-8, while callers that explicitly pass another encoding must keep that behavior. Public report: https://github.com/theskumar/python-dotenv/issues/207",
+  "repository": "repository",
+  "test_command": [
+    "{python}",
+    "-m",
+    "unittest",
+    "tests.test_public",
+    "-v"
+  ],
+  "regression_command": [
+    "{python}",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-v"
+  ],
+  "editable_paths": [
+    "dotenv_loader.py"
+  ],
+  "timeout": 20
+}
