@@ -757,3 +757,4 @@ def test_minimal_run_cli_defaults_to_real_provider_not_scripted() -> None:
         ]
     )
     assert args.brain == "groq"
+    assert args.model == "openai/gpt-oss-120b"

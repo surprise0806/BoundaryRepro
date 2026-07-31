@@ -16,9 +16,17 @@ from boundary_repro.repair.models import (
     PatchProposal,
     ReadTask,
     RepairPlan,
+    StrictRepairPlanOutput,
 )
 
 T = TypeVar("T")
+
+_GPT_OSS_STRICT_MODELS = frozenset(
+    {
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-120b",
+    }
+)
 
 
 class TransientProviderError(ConnectionError):
@@ -301,7 +309,7 @@ class GroqRepairProvider:
     def __init__(
         self,
         *,
-        model: str = "llama-3.3-70b-versatile",
+        model: str = "openai/gpt-oss-120b",
         api_key: str | None = None,
         request_timeout_s: float = 60,
     ) -> None:
@@ -323,24 +331,30 @@ class GroqRepairProvider:
         payload = await self._complete_json(
             {
                 "operation": "plan_read_only_repository_investigation",
+                "output_contract": "RepairPlan",
                 "public_task": task,
                 "failing_public_test": baseline,
                 "verified_memories_for_prioritization_only": memory_hits[:5],
-                "allowed_read_tools": [
-                    "list_files",
-                    "search_code",
-                    "read_file",
-                ],
-                "schema": RepairPlan.model_json_schema(),
                 "constraints": [
+                    "No tools are callable in this provider request.",
+                    (
+                        "read_tasks are data for the LangGraph Harness to "
+                        "execute later, not tool calls to execute now."
+                    ),
+                    (
+                        "Do not emit a provider-native tool/function call or "
+                        "claim any read task has already run."
+                    ),
                     "Do not invent files or hidden-test content.",
                     "Return JSON only.",
-                    "Use only read-only tools in read_tasks.",
                 ],
-            }
+            },
+            output_name="repair_plan",
+            output_schema=_REPAIR_PLAN_SCHEMA,
         )
         try:
-            return RepairPlan.model_validate(payload)
+            strict_plan = StrictRepairPlanOutput.model_validate(payload)
+            return RepairPlan.model_validate(strict_plan.model_dump())
         except ValidationError as exc:
             raise ProviderOutputError(f"invalid Groq repair plan: {exc}") from exc
 
@@ -355,18 +369,29 @@ class GroqRepairProvider:
         payload = await self._complete_json(
             {
                 "operation": "propose_one_minimal_exact_source_replacement",
+                "output_contract": "PatchProposal",
                 "public_task": task,
                 "failing_public_test": baseline,
                 "read_only_evidence": evidence,
                 "verified_memories_for_prioritization_only": memory_hits[:5],
-                "schema": PatchProposal.model_json_schema(),
                 "constraints": [
+                    "No tools are callable in this provider request.",
+                    (
+                        "Repository reads in the evidence were performed by "
+                        "the LangGraph Harness, not by this provider request."
+                    ),
+                    (
+                        "Do not emit a provider-native tool/function call or "
+                        "claim that a patch or verifier has already run."
+                    ),
                     "old_text must appear exactly once in the cited source.",
                     "Do not modify tests or paths outside editable_paths.",
                     "Do not claim hidden tests passed.",
                     "Return JSON only; no private chain-of-thought.",
                 ],
-            }
+            },
+            output_name="patch_proposal",
+            output_schema=_PATCH_PROPOSAL_SCHEMA,
         )
         try:
             return PatchProposal.model_validate(payload)
@@ -375,7 +400,13 @@ class GroqRepairProvider:
                 f"invalid Groq patch proposal: {exc}"
             ) from exc
 
-    async def _complete_json(self, context: dict[str, Any]) -> dict[str, Any]:
+    async def _complete_json(
+        self,
+        context: dict[str, Any],
+        *,
+        output_name: str,
+        output_schema: dict[str, Any],
+    ) -> dict[str, Any]:
         try:
             from groq import (
                 APIConnectionError,
@@ -390,6 +421,23 @@ class GroqRepairProvider:
                 api_key=self.api_key,
                 timeout=self.request_timeout_s,
             )
+            strict_json_schema = self.model in _GPT_OSS_STRICT_MODELS
+            prompt_context = dict(context)
+            if strict_json_schema:
+                response_format = {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": output_name,
+                        "strict": True,
+                        "schema": output_schema,
+                    },
+                }
+            else:
+                # JSON Object Mode needs the schema in the prompt because the
+                # provider does not enforce it. Local Pydantic validation is
+                # still mandatory and never falls back to scripted behavior.
+                prompt_context["output_schema"] = output_schema
+                response_format = {"type": "json_object"}
             response = await client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -397,19 +445,22 @@ class GroqRepairProvider:
                         "role": "system",
                         "content": (
                             "You repair repositories from public evidence. "
-                            "Return exactly one JSON object matching the schema."
+                            "This request exposes no callable tools. Return "
+                            "exactly one JSON data object matching the output "
+                            "contract. Never emit a provider-native tool call "
+                            "or claim a planned action already ran."
                         ),
                     },
                     {
                         "role": "user",
                         "content": json.dumps(
-                            context,
+                            prompt_context,
                             ensure_ascii=False,
                             sort_keys=True,
                         ),
                     },
                 ],
-                response_format={"type": "json_object"},
+                response_format=response_format,
                 temperature=0,
             )
             content = response.choices[0].message.content
@@ -446,3 +497,38 @@ def _strip_line_numbers(content: str) -> str:
         re.sub(r"^\d+:\s?", "", line)
         for line in content.splitlines()
     )
+
+
+def _strict_schema(model: type[Any]) -> dict[str, Any]:
+    """Build and verify the subset required by Groq strict JSON Schema."""
+
+    schema = model.model_json_schema()
+    _assert_strict_objects(schema)
+    return schema
+
+
+def _assert_strict_objects(value: Any, path: str = "$") -> None:
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _assert_strict_objects(item, f"{path}[{index}]")
+        return
+    if not isinstance(value, dict):
+        return
+    if value.get("type") == "object":
+        if value.get("additionalProperties") is not False:
+            raise AssertionError(
+                f"{path} must set additionalProperties=false"
+            )
+        properties = value.get("properties", {})
+        required = set(value.get("required", []))
+        missing = set(properties) - required
+        if missing:
+            raise AssertionError(
+                f"{path} properties missing from required: {sorted(missing)}"
+            )
+    for key, item in value.items():
+        _assert_strict_objects(item, f"{path}.{key}")
+
+
+_REPAIR_PLAN_SCHEMA = _strict_schema(StrictRepairPlanOutput)
+_PATCH_PROPOSAL_SCHEMA = _strict_schema(PatchProposal)
