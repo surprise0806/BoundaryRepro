@@ -217,9 +217,7 @@ fallback with the output schema in the prompt and the same local validation;
 they do not fall back to scripted behavior.
 
 The default model is now `openai/gpt-oss-120b`;
-`llama-3.3-70b-versatile` is no longer the default. No post-v0.5.2 live Groq
-repair run has been performed, so this release makes no claim that a real
-Groq repair has succeeded after the compatibility change.
+`llama-3.3-70b-versatile` is no longer the default.
 
 There is no silent fallback from Groq to scripted behavior. Provider or schema
 failure cannot be marked completed and cannot write long-term memory.
