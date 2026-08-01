@@ -105,6 +105,11 @@ directories, and `.git` are not editable.
 LangGraph `Send`. Evidence and trace lists use append reducers, while a shared
 `asyncio.Semaphore` enforces the configured read concurrency.
 
+Across semantic patch attempts, successful reads and deterministic boundary
+errors are deduplicated by tool plus arguments. A timed-out read, OS error, or
+unclassified handler error may be scheduled again by a later plan; retries
+remain bounded by `max_patch_attempts`, `max_read_tasks`, and the run deadline.
+
 Every workspace mutation and test command acquires the same workspace lock.
 `apply_patch`, public tests, regression tests, verifier-only tests, and
 filesystem rollback therefore cannot race one another, even if callers

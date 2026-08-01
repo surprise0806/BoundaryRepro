@@ -469,6 +469,76 @@ def test_rollback_failure_is_terminal_and_does_not_modify_git(
     run(scenario())
 
 
+def test_timed_out_read_retries_but_successful_read_stays_deduplicated(
+    tmp_path: Path,
+) -> None:
+    async def scenario() -> None:
+        manifest = make_task(tmp_path)
+        read_file_calls = 0
+
+        async def transient_read(arguments: dict[str, Any]) -> dict[str, Any]:
+            nonlocal read_file_calls
+            read_file_calls += 1
+            if read_file_calls == 1:
+                raise TimeoutError("synthetic transient read timeout")
+            return {
+                "status": "ok",
+                "path": arguments["path"],
+                "content": "VALUE = 0",
+            }
+
+        provider = SequenceProvider(
+            [
+                proposal("VALUE = 0", 1),
+                proposal("VALUE = 0", 3),
+                proposal("VALUE = 0", 2),
+            ]
+        )
+        runtime = RepairRuntime(
+            PROJECT_ROOT,
+            state_dir=tmp_path / "state",
+            provider=provider,
+            config=RepairRunConfig(
+                max_patch_attempts=3,
+            ),
+            read_handlers={"read_file": transient_read},
+        )
+        result = await runtime.run(manifest, "retry-timeout-read")
+        state = result["state"]
+
+        assert result["status"] == "completed"
+        assert state["patch_attempt"] == 3
+        assert read_file_calls == 2
+        read_events = [
+            event
+            for event in state["tool_trace"]
+            if event["actor"] == "read_worker"
+            and event["name"] == "read_file"
+        ]
+        assert [event["status"] for event in read_events] == [
+            "timeout",
+            "success",
+        ]
+        list_events = [
+            event
+            for event in state["tool_trace"]
+            if event["actor"] == "read_worker"
+            and event["name"] == "list_files"
+        ]
+        assert len(list_events) == 1
+        assert len(provider.plan_inputs) == 3
+        assert any(
+            item["tool"] == "read_file" and item["status"] == "timeout"
+            for item in provider.plan_inputs[1]["evidence"]
+        )
+        assert any(
+            item["tool"] == "read_file" and item["status"] == "success"
+            for item in provider.plan_inputs[2]["evidence"]
+        )
+
+    run(scenario())
+
+
 def test_max_patch_attempts_defaults_when_old_checkpoint_config_is_loaded() -> None:
     payload = RepairRunConfig().model_dump(mode="json")
     payload.pop("max_patch_attempts")

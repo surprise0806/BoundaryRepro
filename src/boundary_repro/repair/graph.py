@@ -1182,6 +1182,7 @@ def _bounded_read_tasks(
             dict(item.get("arguments", {})),
         )
         for item in existing_evidence
+        if _read_evidence_is_complete(item)
     }
     for task in tasks:
         key = _read_key(task.tool, task.arguments)
@@ -1189,6 +1190,28 @@ def _bounded_read_tasks(
             seen.add(key)
             deduplicated.append(task)
     return deduplicated[: services.config.max_read_tasks]
+
+
+def _read_evidence_is_complete(evidence: dict[str, Any]) -> bool:
+    """Return whether one read result should suppress the same future read.
+
+    Successful reads and deterministic boundary errors are final for a tool
+    plus arguments key. Timeouts, OS errors, and unclassified handler errors
+    may be transient, so a later semantic patch attempt may schedule them
+    again. The graph's patch-attempt, read-task, and deadline budgets still
+    bound those retries.
+    """
+
+    status = evidence.get("status")
+    if status == "success":
+        return True
+    if status == "error":
+        result = evidence.get("result")
+        error_type = (
+            result.get("error_type") if isinstance(result, dict) else None
+        )
+        return error_type in {"RepositoryToolError", "ValueError"}
+    return status != "timeout"
 
 
 def _read_key(tool: str, arguments: dict[str, Any]) -> str:

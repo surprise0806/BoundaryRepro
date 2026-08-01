@@ -18,6 +18,7 @@ from boundary_repro.repair.providers import (
 from boundary_repro.repair.runtime import (
     PAUSE_NODES,
     RepairRuntime,
+    TERMINAL_STATUSES,
 )
 
 
@@ -188,19 +189,14 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(result, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-    if isinstance(result, dict) and result.get("status") in {
-        "completed",
-        "task_loaded",
-        "failure_reproduced",
-        "memory_retrieved",
-        "planned",
-        "reading_repository",
-        "evidence_aggregated",
-        "patch_applied",
-        "verified",
-        "memory_committed",
-    }:
-        return 0
+    if isinstance(result, dict):
+        status = result.get("status")
+        if result.get("paused") is True and status not in TERMINAL_STATUSES:
+            return 0
+        if status == "completed":
+            return 0
+        if status in TERMINAL_STATUSES:
+            return 1
     return 1 if isinstance(result, dict) else 0
 
 
