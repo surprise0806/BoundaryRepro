@@ -606,7 +606,7 @@ def test_hidden_test_failure_prevents_memory_write(
         )
         result = await runtime.run(manifest, "hidden-fails")
 
-        assert result["status"] == "verification_failed"
+        assert result["status"] == "hidden_verification_failed"
         verification = result["state"]["verification"]
         assert verification["hidden_tests_passed"] is False
         assert verification["passed"] is False
@@ -758,3 +758,4 @@ def test_minimal_run_cli_defaults_to_real_provider_not_scripted() -> None:
     )
     assert args.brain == "groq"
     assert args.model == "openai/gpt-oss-120b"
+    assert args.max_patch_attempts == 3

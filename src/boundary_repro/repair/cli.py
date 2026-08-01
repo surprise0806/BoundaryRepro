@@ -100,6 +100,7 @@ def _add_config(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--max-concurrency", type=int, default=3)
     parser.add_argument("--deadline", type=float, default=180)
     parser.add_argument("--max-read-tasks", type=int, default=12)
+    parser.add_argument("--max-patch-attempts", type=int, default=3)
 
 
 async def _execute(args: argparse.Namespace) -> Any:
@@ -119,6 +120,7 @@ async def _execute(args: argparse.Namespace) -> Any:
             max_concurrency=args.max_concurrency,
             run_deadline_s=args.deadline,
             max_read_tasks=args.max_read_tasks,
+            max_patch_attempts=args.max_patch_attempts,
         )
         if args.brain == "scripted":
             provider = ScriptedRepairProvider()

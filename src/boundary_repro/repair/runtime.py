@@ -44,7 +44,9 @@ PAUSE_NODES = {
     "dispatch_read_workers",
     "aggregate",
     "patch",
-    "verify",
+    "verify_candidate",
+    "prepare_retry",
+    "verify_hidden",
     "commit_memory",
 }
 TERMINAL_STATUSES = {
@@ -54,6 +56,9 @@ TERMINAL_STATUSES = {
     "baseline_not_failed",
     "patch_failed",
     "verification_failed",
+    "repair_exhausted",
+    "hidden_verification_failed",
+    "rollback_failed",
     "deadline_exceeded",
     "failed",
 }
@@ -165,6 +170,12 @@ class RepairRuntime:
                 "evidence": [],
                 "patch_proposal": None,
                 "patch_result": None,
+                "patch_attempt": 1,
+                "repair_feedback": None,
+                "attempt_history": [],
+                "candidate_verification": None,
+                "patch_diff_history": [],
+                "rollback_count": 0,
                 "verification": None,
                 "status": "initialized",
                 "metrics": {},
@@ -421,7 +432,7 @@ class RepairRuntime:
         return {
             "configurable": {"thread_id": thread_id},
             "max_concurrency": config.max_concurrency,
-            "recursion_limit": 50,
+            "recursion_limit": 100,
         }
 
     @staticmethod

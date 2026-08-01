@@ -14,9 +14,12 @@ from langgraph.types import Send
 
 from boundary_repro.repair.memory import RepairMemoryStore
 from boundary_repro.repair.models import (
+    AttemptRecord,
+    CandidateVerification,
     LoadedTask,
     PatchProposal,
     ReadTask,
+    RepairFeedback,
     RepairMemoryRecord,
     RepairPlan,
     RepairRunConfig,
@@ -34,7 +37,10 @@ from boundary_repro.repair.tools import (
     RepositoryRepairTools,
     RepositoryToolError,
 )
-from boundary_repro.repair.verifier import verify_behavior
+from boundary_repro.repair.verifier import (
+    verify_behavior,
+    verify_candidate_behavior,
+)
 
 
 @dataclass(frozen=True)
@@ -204,6 +210,10 @@ def build_repair_graph(
                     task=state["task"],
                     baseline=dict(state["baseline_result"] or {}),
                     memory_hits=list(state.get("memory_hits", [])),
+                    patch_attempt=int(state.get("patch_attempt", 1)),
+                    repair_feedback=_repair_feedback(state),
+                    attempt_history=_attempt_history(state),
+                    evidence=list(state.get("evidence", [])),
                 ),
                 operation_name="provider_plan",
                 absolute_deadline=float(state["deadline_at_epoch"]),
@@ -250,7 +260,11 @@ def build_repair_graph(
                 ),
                 "metrics": _metrics(state, "plan"),
             }
-        tasks = _bounded_read_tasks(result, services)
+        tasks = _bounded_read_tasks(
+            result,
+            services,
+            existing_evidence=list(state.get("evidence", [])),
+        )
         return {
             "plan": result.model_dump(mode="json"),
             "read_tasks": [
@@ -404,6 +418,7 @@ def build_repair_graph(
         }
 
     async def patch(state: RepairState) -> dict[str, Any]:
+        attempt = int(state.get("patch_attempt", 1))
         try:
             proposal, audit = await retry_with_deadline(
                 lambda: services.provider.apatch(
@@ -411,6 +426,9 @@ def build_repair_graph(
                     baseline=dict(state["baseline_result"] or {}),
                     evidence=list(state.get("evidence", [])),
                     memory_hits=list(state.get("memory_hits", [])),
+                    patch_attempt=attempt,
+                    repair_feedback=_repair_feedback(state),
+                    attempt_history=_attempt_history(state),
                 ),
                 operation_name="provider_patch",
                 absolute_deadline=float(state["deadline_at_epoch"]),
@@ -474,21 +492,53 @@ def build_repair_graph(
                 ),
             )
         diff_result = services.tools.show_diff()
+        current_diff = str(diff_result["diff"])
+        diff_sha256 = _sha256(current_diff)
+        diff_history = list(state.get("patch_diff_history", []))
         applied = result.get("status") == "applied"
-        patch_status = (
-            "patch_applied"
-            if applied
-            else (
-                "deadline_exceeded"
-                if result.get("status") == "timeout"
-                and time.time() >= float(state["deadline_at_epoch"])
-                else "patch_failed"
-            )
+        repeated = applied and bool(current_diff.strip()) and (
+            diff_sha256 in diff_history
         )
+        no_progress = applied and (not current_diff.strip() or repeated)
+        if applied and not no_progress:
+            patch_status = "patch_applied"
+            diff_history.append(diff_sha256)
+        elif no_progress:
+            patch_status = "no_progress"
+        elif (
+            result.get("status") == "timeout"
+            and time.time() >= float(state["deadline_at_epoch"])
+        ):
+            patch_status = "deadline_exceeded"
+        else:
+            patch_status = "retry_required"
+        result = {
+            **result,
+            "attempt": attempt,
+            "diff_sha256": diff_sha256,
+            "repeated_diff": repeated,
+        }
+        metrics = _metrics(
+            state,
+            "patch",
+            patch_attempts=max(
+                int(state.get("metrics", {}).get("patch_attempts", 0)),
+                attempt,
+            ),
+        )
+        if no_progress:
+            metrics["no_progress_count"] = int(
+                metrics.get("no_progress_count", 0)
+            ) + 1
+        if repeated:
+            metrics["repeated_diff_count"] = int(
+                metrics.get("repeated_diff_count", 0)
+            ) + 1
         return {
             "patch_proposal": proposal.model_dump(mode="json"),
             "patch_result": result,
-            "current_diff": str(diff_result["diff"]),
+            "current_diff": current_diff,
+            "patch_diff_history": diff_history,
             "status": patch_status,
             "tool_trace": _provider_audit_events(audit)
             + [
@@ -510,20 +560,32 @@ def build_repair_graph(
                     diff_result,
                     actor="tool",
                 ),
+                _simple_event(
+                    "diff_progress_guard",
+                    "no_progress" if no_progress else "progress",
+                    {
+                        "attempt": attempt,
+                        "diff_sha256": diff_sha256,
+                        "repeated_diff": repeated,
+                        "nonempty_diff": bool(current_diff.strip()),
+                    },
+                    actor="verifier",
+                ),
             ],
-            "metrics": _metrics(state, "patch"),
+            "metrics": metrics,
         }
 
     def route_after_patch(state: RepairState) -> str:
-        return (
-            "verify"
-            if state.get("status") == "patch_applied"
-            else "finalize"
-        )
+        if state.get("status") == "patch_applied":
+            return "verify_candidate"
+        if state.get("status") in {"retry_required", "no_progress"}:
+            return "prepare_retry"
+        return "finalize"
 
-    async def verify(state: RepairState) -> dict[str, Any]:
+    async def verify_candidate(state: RepairState) -> dict[str, Any]:
         diff_result = services.tools.show_diff()
         current_diff = str(diff_result["diff"])
+        diff_sha256 = _sha256(current_diff)
         paths = [str(item) for item in diff_result["changed_paths"]]
         legal_paths = bool(paths) and all(
             services.tools.is_editable(path) for path in paths
@@ -548,7 +610,7 @@ def build_repair_graph(
                 "run_tests",
                 str(public_after.get("status", "error")),
                 {
-                    "phase": "after_patch",
+                    "phase": "candidate",
                     "command_kind": "public",
                     "result": public_after,
                 },
@@ -573,87 +635,285 @@ def build_repair_graph(
                 actor="verifier",
             )
         )
+        behavior = verify_candidate_behavior(
+            attempt=int(state.get("patch_attempt", 1)),
+            current_diff=current_diff,
+            changed_paths=paths,
+            legal_paths=legal_paths,
+            public_after=public_after,
+            regression=regression,
+            diff_sha256=diff_sha256,
+        )
+        deadline_exhausted = (
+            time.time() >= float(state["deadline_at_epoch"])
+            and any(
+                result.get("status") == "timeout"
+                for result in (public_after, regression)
+            )
+        )
+        if deadline_exhausted:
+            status = "deadline_exceeded"
+        elif not behavior.nonempty_diff or not behavior.legal_paths:
+            status = "patch_failed"
+        elif behavior.passed:
+            status = "candidate_verified"
+        else:
+            status = "retry_required"
+        history = list(state.get("attempt_history", []))
+        if behavior.passed:
+            history.append(
+                _attempt_record(
+                    state,
+                    failure_stage=None,
+                    public_status=behavior.public_test_status,
+                    regression_status=behavior.regression_test_status,
+                    changed_paths=paths,
+                    diff_sha256=diff_sha256,
+                ).model_dump(mode="json")
+            )
+        metrics = _metrics(state, "verify_candidate")
+        metrics["candidate_verification_runs"] = int(
+            metrics.get("candidate_verification_runs", 0)
+        ) + 1
+        return {
+            "candidate_verification": behavior.model_dump(mode="json"),
+            "attempt_history": history,
+            "current_diff": current_diff,
+            "status": status,
+            "tool_trace": events,
+            "metrics": {
+                **metrics,
+                "candidate_verification_passed": behavior.passed,
+                "max_workspace_operations": (
+                    services.tools.max_active_workspace_operations
+                ),
+            },
+        }
+
+    def route_after_candidate(state: RepairState) -> str:
+        if state.get("status") == "candidate_verified":
+            return "verify_hidden"
+        if state.get("status") == "retry_required":
+            return "prepare_retry"
+        return "finalize"
+
+    async def prepare_retry(state: RepairState) -> dict[str, Any]:
+        attempt = int(state.get("patch_attempt", 1))
+        candidate_payload = state.get("candidate_verification")
+        candidate = (
+            CandidateVerification.model_validate(candidate_payload)
+            if candidate_payload
+            else None
+        )
+        if state.get("status") == "no_progress":
+            failure_stage = "no_progress"
+            summary = "The applied patch repeated a prior diff or made no change."
+        elif candidate is not None and candidate.failure_stage is not None:
+            failure_stage = candidate.failure_stage
+            summary = ", ".join(candidate.reasons) or "candidate failed"
+        else:
+            failure_stage = "patch_apply"
+            summary = str(
+                (state.get("patch_result") or {}).get(
+                    "reason", "patch application failed"
+                )
+            )
+        diff_result = services.tools.show_diff()
+        paths = [str(item) for item in diff_result["changed_paths"]]
+        diff_sha256 = str(
+            (state.get("patch_result") or {}).get(
+                "diff_sha256", _sha256(str(diff_result["diff"]))
+            )
+        )
+        public_status = (
+            candidate.public_test_status if candidate is not None else None
+        )
+        regression_status = (
+            candidate.regression_test_status if candidate is not None else None
+        )
+        feedback = RepairFeedback(
+            attempt=attempt,
+            failure_stage=failure_stage,
+            summary=summary,
+            patch_status=str(
+                (state.get("patch_result") or {}).get("status", "unknown")
+            ),
+            public_test_status=public_status,
+            regression_test_status=regression_status,
+            public_test_output=(
+                candidate.public_test_output if candidate is not None else ""
+            ),
+            regression_test_output=(
+                candidate.regression_test_output if candidate is not None else ""
+            ),
+            changed_paths=paths,
+            previous_diff_sha256=diff_sha256,
+        )
+        history = list(state.get("attempt_history", []))
+        history.append(
+            _attempt_record(
+                state,
+                failure_stage=failure_stage,
+                public_status=public_status,
+                regression_status=regression_status,
+                changed_paths=paths,
+                diff_sha256=diff_sha256,
+            ).model_dump(mode="json")
+        )
+        rollback_started = time.perf_counter()
+        rollback = await services.tools.rollback_workspace()
+        rolled_back = rollback.get("status") == "rolled_back"
+        rollback_count = int(state.get("rollback_count", 0)) + int(
+            rolled_back
+        )
+        exhausted = attempt >= services.config.max_patch_attempts
+        deadline_exhausted = time.time() >= float(state["deadline_at_epoch"])
+        if not rolled_back:
+            status = "rollback_failed"
+            termination_reason = "rollback_failed"
+            next_attempt = attempt
+        elif deadline_exhausted:
+            status = "deadline_exceeded"
+            termination_reason = "deadline_exceeded_before_retry"
+            next_attempt = attempt
+        elif exhausted:
+            status = "repair_exhausted"
+            termination_reason = "max_patch_attempts_exhausted"
+            next_attempt = attempt
+        else:
+            status = "retry_planned"
+            termination_reason = None
+            next_attempt = attempt + 1
+        metrics = _metrics(state, "prepare_retry")
+        retry_reasons = list(metrics.get("retry_reasons", []))
+        retry_reasons.append(failure_stage)
+        metrics.update(
+            {
+                "repair_retries": int(metrics.get("repair_retries", 0))
+                + int(status == "retry_planned"),
+                "rollback_count": rollback_count,
+                "retry_reasons": retry_reasons,
+                "max_workspace_operations": (
+                    services.tools.max_active_workspace_operations
+                ),
+            }
+        )
+        if termination_reason is not None:
+            metrics["termination_reason"] = termination_reason
+        return {
+            "repair_feedback": feedback.model_dump(mode="json"),
+            "attempt_history": history,
+            "candidate_verification": None,
+            "patch_attempt": next_attempt,
+            "patch_proposal": None,
+            "patch_result": None,
+            "rollback_count": rollback_count,
+            "current_diff": "" if rolled_back else str(diff_result["diff"]),
+            "status": status,
+            "tool_trace": [
+                _event(
+                    "rollback_workspace",
+                    str(rollback.get("status", "error")),
+                    {"attempt": attempt},
+                    rollback,
+                    rollback_started,
+                    actor="tool",
+                )
+            ],
+            "metrics": metrics,
+        }
+
+    def route_after_retry(state: RepairState) -> str:
+        return "plan" if state.get("status") == "retry_planned" else "finalize"
+
+    async def verify_hidden(state: RepairState) -> dict[str, Any]:
+        candidate = CandidateVerification.model_validate(
+            state["candidate_verification"]
+        )
         hidden = await _run_test_with_deadline(
             services,
             state,
             command_kind="hidden",
             expose_output=False,
         )
-        events.append(
-            _simple_event(
-                "hidden_tests",
-                str(hidden.get("status", "error")),
-                {
-                    "status": hidden.get("status"),
-                    "returncode": hidden.get("returncode"),
-                    "duration_ms": hidden.get("duration_ms"),
-                    "output_sha256": hidden.get("output_sha256"),
-                },
-                actor="verifier",
-            )
-        )
-
+        hidden_audit = {
+            "status": hidden.get("status"),
+            "returncode": hidden.get("returncode"),
+            "duration_ms": hidden.get("duration_ms"),
+            "output_sha256": hidden.get("output_sha256"),
+        }
         behavior = verify_behavior(
             baseline_result=dict(state.get("baseline_result") or {}),
-            current_diff=current_diff,
-            changed_paths=paths,
-            legal_paths=legal_paths,
-            public_after=public_after,
-            regression=regression,
-            hidden=hidden,
+            current_diff=str(state.get("current_diff", "")),
+            changed_paths=list(candidate.changed_paths),
+            legal_paths=candidate.legal_paths,
+            public_after={"status": candidate.public_test_status},
+            regression={"status": candidate.regression_test_status},
+            hidden=hidden_audit,
         )
         proposal = PatchProposal.model_validate(state["patch_proposal"])
         submission = services.tools.submit_solution(proposal, behavior)
         submitted = submission.get("status") == "accepted"
-        result = behavior.model_copy(
-            update={"submitted": submitted}
+        result = behavior.model_copy(update={"submitted": submitted})
+        deadline_exhausted = (
+            hidden.get("status") == "timeout"
+            and time.time() >= float(state["deadline_at_epoch"])
         )
-        events.append(
+        if deadline_exhausted:
+            status = "deadline_exceeded"
+            termination_reason = "deadline_exceeded_during_hidden_verification"
+        elif result.passed and result.submitted:
+            status = "verified"
+            termination_reason = None
+        else:
+            status = "hidden_verification_failed"
+            termination_reason = "hidden_verification_failed"
+        metrics = _metrics(state, "verify_hidden")
+        metrics.update(
+            {
+                "hidden_verification_runs": int(
+                    metrics.get("hidden_verification_runs", 0)
+                )
+                + 1,
+                "verification_passed": result.passed,
+                "successful_attempt": (
+                    int(state.get("patch_attempt", 1))
+                    if result.passed and result.submitted
+                    else None
+                ),
+            }
+        )
+        if termination_reason is not None:
+            metrics["termination_reason"] = termination_reason
+        events = [
             _simple_event(
-                "submit_solution",
-                str(submission.get("status", "error")),
-                submission,
+                "hidden_tests",
+                str(hidden.get("status", "error")),
+                hidden_audit,
                 actor="verifier",
             )
-        )
-        deadline_exhausted = (
-            time.time() >= float(state["deadline_at_epoch"])
-            and any(
-                result.get("status") == "timeout"
-                for result in (public_after, regression, hidden)
+        ]
+        if submitted:
+            events.append(
+                _simple_event(
+                    "submit_solution",
+                    "accepted",
+                    submission,
+                    actor="verifier",
+                )
             )
-        )
         return {
             "verification": result.model_dump(mode="json"),
-            "current_diff": current_diff,
-            "status": (
-                "deadline_exceeded"
-                if deadline_exhausted
-                else (
-                    "verified"
-                    if result.passed and result.submitted
-                    else "verification_failed"
-                )
-            ),
+            "status": status,
             "tool_trace": events,
-            "metrics": _metrics(
-                state,
-                "verify",
-                verification_passed=result.passed,
-                max_workspace_operations=(
-                    services.tools.max_active_workspace_operations
-                ),
-            ),
+            "metrics": metrics,
         }
 
-    def route_after_verification(state: RepairState) -> str:
+    def route_after_hidden(state: RepairState) -> str:
         verification = state.get("verification") or {}
-        return (
-            "commit_memory"
-            if verification.get("passed")
-            and verification.get("submitted")
-            else "finalize"
-        )
+        if verification.get("passed") and verification.get("submitted"):
+            return "commit_memory"
+        return "finalize"
 
     async def commit_memory(state: RepairState) -> dict[str, Any]:
         proposal = PatchProposal.model_validate(state["patch_proposal"])
@@ -726,12 +986,21 @@ def build_repair_graph(
             "baseline_not_failed",
             "patch_failed",
             "verification_failed",
+            "repair_exhausted",
+            "hidden_verification_failed",
+            "rollback_failed",
         }:
             final_status = current
         else:
             final_status = "failed"
         memory_assisted = bool(state.get("memory_hits", []))
         total_paused_s = float(state.get("total_paused_s", 0.0))
+        existing_metrics = dict(state.get("metrics", {}))
+        termination_reason = existing_metrics.get("termination_reason")
+        if final_status == "completed":
+            termination_reason = "completed"
+        elif termination_reason is None:
+            termination_reason = final_status
         return {
             "status": final_status,
             "metrics": _metrics(
@@ -750,6 +1019,26 @@ def build_repair_graph(
                     state.get("provider") != "scripted"
                     and not memory_assisted
                 ),
+                patch_attempts=int(
+                    existing_metrics.get("patch_attempts", 0)
+                ),
+                repair_retries=int(
+                    existing_metrics.get("repair_retries", 0)
+                ),
+                rollback_count=int(state.get("rollback_count", 0)),
+                retry_reasons=list(
+                    existing_metrics.get("retry_reasons", [])
+                ),
+                candidate_verification_runs=int(
+                    existing_metrics.get("candidate_verification_runs", 0)
+                ),
+                hidden_verification_runs=int(
+                    existing_metrics.get("hidden_verification_runs", 0)
+                ),
+                successful_attempt=existing_metrics.get(
+                    "successful_attempt"
+                ),
+                termination_reason=termination_reason,
             ),
         }
 
@@ -763,7 +1052,9 @@ def build_repair_graph(
         "read_worker": read_worker,
         "aggregate": aggregate,
         "patch": patch,
-        "verify": verify,
+        "verify_candidate": verify_candidate,
+        "prepare_retry": prepare_retry,
+        "verify_hidden": verify_hidden,
         "commit_memory": commit_memory,
         "finalize": finalize,
     }
@@ -803,11 +1094,29 @@ def build_repair_graph(
     builder.add_conditional_edges(
         "patch",
         route_after_patch,
-        {"verify": "verify", "finalize": "finalize"},
+        {
+            "verify_candidate": "verify_candidate",
+            "prepare_retry": "prepare_retry",
+            "finalize": "finalize",
+        },
     )
     builder.add_conditional_edges(
-        "verify",
-        route_after_verification,
+        "verify_candidate",
+        route_after_candidate,
+        {
+            "verify_hidden": "verify_hidden",
+            "prepare_retry": "prepare_retry",
+            "finalize": "finalize",
+        },
+    )
+    builder.add_conditional_edges(
+        "prepare_retry",
+        route_after_retry,
+        {"plan": "plan", "finalize": "finalize"},
+    )
+    builder.add_conditional_edges(
+        "verify_hidden",
+        route_after_hidden,
         {
             "commit_memory": "commit_memory",
             "finalize": "finalize",
@@ -824,6 +1133,8 @@ def build_repair_graph(
 def _bounded_read_tasks(
     plan: RepairPlan,
     services: RepairGraphServices,
+    *,
+    existing_evidence: list[dict[str, Any]],
 ) -> list[ReadTask]:
     tasks: list[ReadTask] = [
         ReadTask(
@@ -865,19 +1176,66 @@ def _bounded_read_tasks(
             )
     tasks.extend(plan.read_tasks)
     deduplicated: list[ReadTask] = []
-    seen: set[str] = set()
-    for task in tasks:
-        key = json.dumps(
-            {
-                "tool": task.tool,
-                "arguments": task.arguments,
-            },
-            sort_keys=True,
+    seen: set[str] = {
+        _read_key(
+            str(item.get("tool", "")),
+            dict(item.get("arguments", {})),
         )
+        for item in existing_evidence
+    }
+    for task in tasks:
+        key = _read_key(task.tool, task.arguments)
         if key not in seen:
             seen.add(key)
             deduplicated.append(task)
     return deduplicated[: services.config.max_read_tasks]
+
+
+def _read_key(tool: str, arguments: dict[str, Any]) -> str:
+    return json.dumps(
+        {"tool": tool, "arguments": arguments},
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+def _repair_feedback(state: RepairState) -> RepairFeedback | None:
+    payload = state.get("repair_feedback")
+    return RepairFeedback.model_validate(payload) if payload else None
+
+
+def _attempt_history(state: RepairState) -> list[AttemptRecord]:
+    return [
+        AttemptRecord.model_validate(item)
+        for item in state.get("attempt_history", [])
+    ]
+
+
+def _attempt_record(
+    state: RepairState,
+    *,
+    failure_stage: Any,
+    public_status: str | None,
+    regression_status: str | None,
+    changed_paths: list[str],
+    diff_sha256: str,
+) -> AttemptRecord:
+    proposal = PatchProposal.model_validate(state["patch_proposal"])
+    patch_result = dict(state.get("patch_result") or {})
+    return AttemptRecord(
+        attempt=int(state.get("patch_attempt", 1)),
+        proposal_summary=proposal.summary,
+        changed_paths=changed_paths,
+        diff_sha256=diff_sha256,
+        patch_status=str(patch_result.get("status", "unknown")),
+        public_test_status=public_status,
+        regression_test_status=regression_status,
+        failure_stage=failure_stage,
+    )
+
+
+def _sha256(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 async def _run_test_with_deadline(
