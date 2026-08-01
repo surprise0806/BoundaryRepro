@@ -18,6 +18,7 @@ from boundary_repro.repair.providers import (
 from boundary_repro.repair.runtime import (
     PAUSE_NODES,
     RepairRuntime,
+    TERMINAL_STATUSES,
 )
 
 
@@ -100,6 +101,7 @@ def _add_config(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--max-concurrency", type=int, default=3)
     parser.add_argument("--deadline", type=float, default=180)
     parser.add_argument("--max-read-tasks", type=int, default=12)
+    parser.add_argument("--max-patch-attempts", type=int, default=3)
 
 
 async def _execute(args: argparse.Namespace) -> Any:
@@ -119,6 +121,7 @@ async def _execute(args: argparse.Namespace) -> Any:
             max_concurrency=args.max_concurrency,
             run_deadline_s=args.deadline,
             max_read_tasks=args.max_read_tasks,
+            max_patch_attempts=args.max_patch_attempts,
         )
         if args.brain == "scripted":
             provider = ScriptedRepairProvider()
@@ -186,19 +189,14 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(result, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-    if isinstance(result, dict) and result.get("status") in {
-        "completed",
-        "task_loaded",
-        "failure_reproduced",
-        "memory_retrieved",
-        "planned",
-        "reading_repository",
-        "evidence_aggregated",
-        "patch_applied",
-        "verified",
-        "memory_committed",
-    }:
-        return 0
+    if isinstance(result, dict):
+        status = result.get("status")
+        if result.get("paused") is True and status not in TERMINAL_STATUSES:
+            return 0
+        if status == "completed":
+            return 0
+        if status in TERMINAL_STATUSES:
+            return 1
     return 1 if isinstance(result, dict) else 0
 
 

@@ -1,4 +1,4 @@
-"""Generic repository tools shared by every v0.5 repair task."""
+"""Generic repository tools shared by every repair task."""
 
 from __future__ import annotations
 
@@ -327,6 +327,14 @@ class RepositoryRepairTools:
         async with self._workspace_operation():
             return self._apply_patch_sync(proposal)
 
+    async def rollback_workspace(self) -> dict[str, Any]:
+        """Restore the public template without invoking a shell or VCS."""
+
+        async with self._workspace_operation():
+            return await _to_thread_holding_lock_on_cancellation(
+                self._rollback_workspace_sync
+            )
+
     def show_diff(self) -> dict[str, Any]:
         diff = workspace_diff(self.task.repository_path, self.workspace)
         return {
@@ -410,6 +418,116 @@ class RepositoryRepairTools:
             "after_sha256": hashlib.sha256(
                 updated.encode("utf-8")
             ).hexdigest(),
+        }
+
+    def _rollback_workspace_sync(self) -> dict[str, Any]:
+        template = self.task.repository_path.resolve()
+        workspace = self.workspace.resolve()
+        if (
+            workspace == template
+            or template in workspace.parents
+            or workspace in template.parents
+            or not workspace.is_dir()
+            or not template.is_dir()
+        ):
+            return {
+                "status": "error",
+                "reason": "rollback source or destination is unsafe",
+            }
+
+        template_hash_before = tree_hash(template)
+        workspace_hash_before = tree_hash(workspace)
+        paths_before = changed_paths(template, workspace)
+        diff_before_sha256 = hashlib.sha256(
+            workspace_diff(template, workspace).encode("utf-8")
+        ).hexdigest()
+        try:
+            for entry in workspace.iterdir():
+                if entry.name == ".git":
+                    return {
+                        "status": "error",
+                        "reason": "rollback refuses to modify .git",
+                        "template_hash_before": template_hash_before,
+                        "workspace_hash_before": workspace_hash_before,
+                        "changed_paths_before": paths_before,
+                        "diff_before_sha256": diff_before_sha256,
+                    }
+                if entry.is_symlink() or (
+                    hasattr(entry, "is_junction") and entry.is_junction()
+                ):
+                    entry.unlink() if entry.is_symlink() else entry.rmdir()
+                    continue
+                safe_entry = resolve_beneath(workspace, entry.name)
+                if safe_entry != entry.resolve():
+                    raise RepositoryToolError(
+                        "rollback entry resolves outside the workspace"
+                    )
+                if entry.is_file():
+                    entry.unlink()
+                elif entry.is_dir():
+                    shutil.rmtree(entry)
+                else:
+                    entry.unlink()
+            shutil.copytree(
+                template,
+                workspace,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns(*_SKIPPED_DIRECTORIES),
+            )
+        except (OSError, RepositoryToolError, ValueError) as exc:
+            return {
+                "status": "error",
+                "reason": f"filesystem rollback failed: {exc}",
+                "template_hash_before": template_hash_before,
+                "workspace_hash_before": workspace_hash_before,
+                "changed_paths_before": paths_before,
+                "diff_before_sha256": diff_before_sha256,
+            }
+
+        template_hash_after = tree_hash(template)
+        workspace_hash_after = tree_hash(workspace)
+        paths_after = changed_paths(template, workspace)
+        post_diff = workspace_diff(template, workspace)
+        if template_hash_after != template_hash_before:
+            return {
+                "status": "error",
+                "reason": "public template changed during rollback",
+                "template_hash_before": template_hash_before,
+                "template_hash_after": template_hash_after,
+                "workspace_hash_before": workspace_hash_before,
+                "workspace_hash_after": workspace_hash_after,
+                "changed_paths_before": paths_before,
+                "changed_paths_after": paths_after,
+                "diff_before_sha256": diff_before_sha256,
+                "post_diff_sha256": hashlib.sha256(
+                    post_diff.encode("utf-8")
+                ).hexdigest(),
+            }
+        if post_diff or paths_after or workspace_hash_after != template_hash_after:
+            return {
+                "status": "error",
+                "reason": "rollback did not restore the public template",
+                "template_hash_before": template_hash_before,
+                "template_hash_after": template_hash_after,
+                "workspace_hash_before": workspace_hash_before,
+                "workspace_hash_after": workspace_hash_after,
+                "changed_paths_before": paths_before,
+                "changed_paths_after": paths_after,
+                "diff_before_sha256": diff_before_sha256,
+                "post_diff_sha256": hashlib.sha256(
+                    post_diff.encode("utf-8")
+                ).hexdigest(),
+            }
+        return {
+            "status": "rolled_back",
+            "template_hash_before": template_hash_before,
+            "template_hash_after": template_hash_after,
+            "workspace_hash_before": workspace_hash_before,
+            "workspace_hash_after": workspace_hash_after,
+            "changed_paths_before": paths_before,
+            "changed_paths_after": paths_after,
+            "diff_before_sha256": diff_before_sha256,
+            "post_diff_sha256": hashlib.sha256(b"").hexdigest(),
         }
 
     def _run_command(

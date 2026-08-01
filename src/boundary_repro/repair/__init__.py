@@ -1,4 +1,4 @@
-"""Stateful repository issue repair agent introduced in BoundaryRepro v0.5."""
+"""BoundaryRepro v0.6 bounded iterative repository repair runtime."""
 
 from boundary_repro.repair.models import RepairRunConfig, TaskSpec
 from boundary_repro.repair.runtime import RepairRuntime

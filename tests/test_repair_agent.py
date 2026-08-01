@@ -17,7 +17,7 @@ from boundary_repro.repair.models import (
     TaskSpec,
     VerificationResult,
 )
-from boundary_repro.repair.cli import build_parser
+from boundary_repro.repair.cli import build_parser, main
 from boundary_repro.repair.providers import (
     ProviderOutputError,
     ScriptedRepairProvider,
@@ -606,7 +606,7 @@ def test_hidden_test_failure_prevents_memory_write(
         )
         result = await runtime.run(manifest, "hidden-fails")
 
-        assert result["status"] == "verification_failed"
+        assert result["status"] == "hidden_verification_failed"
         verification = result["state"]["verification"]
         assert verification["hidden_tests_passed"] is False
         assert verification["passed"] is False
@@ -758,3 +758,59 @@ def test_minimal_run_cli_defaults_to_real_provider_not_scripted() -> None:
     )
     assert args.brain == "groq"
     assert args.model == "openai/gpt-oss-120b"
+    assert args.max_patch_attempts == 3
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "retry_planned",
+        "candidate_verified",
+        "retry_required",
+        "no_progress",
+    ],
+)
+def test_cli_successful_nonterminal_pause_returns_zero(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    status: str,
+) -> None:
+    async def paused_result(_: Any) -> dict[str, Any]:
+        return {"status": status, "paused": True, "next": ["plan"]}
+
+    monkeypatch.setattr(
+        "boundary_repro.repair.cli._execute",
+        paused_result,
+    )
+
+    exit_code = main(
+        ["run", "--task", "task.json", "--thread-id", "cli-pause"]
+    )
+
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out)["status"] == status
+
+
+@pytest.mark.parametrize(
+    "status",
+    ["provider_failed", "deadline_exceeded", "rollback_failed"],
+)
+def test_cli_terminal_failure_returns_nonzero(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    status: str,
+) -> None:
+    async def failed_result(_: Any) -> dict[str, Any]:
+        return {"status": status, "paused": False, "next": []}
+
+    monkeypatch.setattr(
+        "boundary_repro.repair.cli._execute",
+        failed_result,
+    )
+
+    exit_code = main(
+        ["run", "--task", "task.json", "--thread-id", "cli-failure"]
+    )
+
+    assert exit_code == 1
+    assert json.loads(capsys.readouterr().out)["status"] == status

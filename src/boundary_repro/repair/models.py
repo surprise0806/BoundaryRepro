@@ -22,6 +22,12 @@ _TEST_PATH_PARTS = {
 }
 
 ReadToolName = Literal["list_files", "search_code", "read_file"]
+FailureStage = Literal[
+    "patch_apply",
+    "public_tests",
+    "regression_tests",
+    "no_progress",
+]
 
 
 def utc_now() -> str:
@@ -147,6 +153,7 @@ class RepairRunConfig(StrictModel):
     max_concurrency: int = Field(default=3, ge=1, le=16)
     run_deadline_s: float = Field(default=180, gt=0, le=3600)
     max_read_tasks: int = Field(default=12, ge=1, le=50)
+    max_patch_attempts: int = Field(default=3, ge=1, le=5)
 
 
 class ReadTask(StrictModel):
@@ -233,6 +240,53 @@ class PatchProposal(StrictModel):
         if not value.strip():
             raise ValueError("patch/report fields must be non-empty")
         return value
+
+
+class RepairFeedback(StrictModel):
+    """Public, retry-safe feedback from one failed patch attempt."""
+
+    attempt: int = Field(ge=1)
+    failure_stage: FailureStage
+    summary: str
+    patch_status: str
+    public_test_status: str | None
+    regression_test_status: str | None
+    public_test_output: str
+    regression_test_output: str
+    changed_paths: list[str]
+    previous_diff_sha256: str
+
+
+class AttemptRecord(StrictModel):
+    """Sanitized, serializable history for one semantic patch attempt."""
+
+    attempt: int = Field(ge=1)
+    proposal_summary: str
+    changed_paths: list[str]
+    diff_sha256: str
+    patch_status: str
+    public_test_status: str | None
+    regression_test_status: str | None
+    failure_stage: FailureStage | None
+
+
+class CandidateVerification(StrictModel):
+    """Public/regression verification result; never contains hidden output."""
+
+    attempt: int = Field(ge=1)
+    passed: bool
+    nonempty_diff: bool
+    legal_paths: bool
+    public_tests_passed: bool
+    regression_passed: bool
+    public_test_status: str
+    regression_test_status: str
+    public_test_output: str
+    regression_test_output: str
+    changed_paths: list[str]
+    diff_sha256: str
+    failure_stage: FailureStage | None
+    reasons: list[str] = Field(default_factory=list)
 
 
 class VerificationResult(StrictModel):

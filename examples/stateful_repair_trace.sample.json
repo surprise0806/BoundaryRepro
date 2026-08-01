@@ -1,22 +1,22 @@
 {
   "sample_metadata": {
-    "boundary_repro_version": "0.5.2",
+    "boundary_repro_version": "0.6.0",
     "provider": "scripted",
     "sanitized": true,
-    "evaluation_note": "Deterministic demo only; not an LLM score.",
-    "raw_output_location": "<PROJECT_ROOT>/.boundary_state/exports/stateful_repair_trace.json"
+    "evaluation_note": "Deterministic two-attempt test-provider demo only; not an LLM score.",
+    "raw_output_location": "<PROJECT_ROOT>/.boundary_state/exports/stateful-iterative-v060.raw.json"
   },
-  "thread_id": "public-scripted-sample",
+  "thread_id": "public-scripted-iterative-v060",
   "status": "completed",
   "paused": false,
   "next": [],
-  "history_count": 13,
+  "history_count": 20,
   "state": {
-    "thread_id": "public-scripted-sample",
-    "task_path": "<PROJECT_ROOT>\\benchmarks\\blind-python-dotenv-207\\task.json",
+    "thread_id": "public-scripted-iterative-v060",
+    "task_path": "<PROJECT_ROOT>\\.boundary_state\\public-sample-task-v060\\iterative-task\\task.json",
     "task": {
-      "task_id": "blind-python-dotenv-207",
-      "issue_text": "A UTF-8 .env file can raise UnicodeDecodeError on Windows when the locale codec is not UTF-8. Reading an .env file without an explicit encoding should default to UTF-8, while callers that explicitly pass another encoding must keep that behavior. Public report: https://github.com/theskumar/python-dotenv/issues/207",
+      "task_id": "iterative-repair-test",
+      "issue_text": "Change the public behavior to the required value.",
       "repository": "repository",
       "test_command": [
         "{python}",
@@ -35,9 +35,9 @@
         "-v"
       ],
       "editable_paths": [
-        "dotenv_loader.py"
+        "model.py"
       ],
-      "timeout": 20
+      "timeout": 10
     },
     "provider": "scripted",
     "model": null,
@@ -49,12 +49,13 @@
       "retry_initial_delay_s": 0.1,
       "max_concurrency": 3,
       "run_deadline_s": 180.0,
-      "max_read_tasks": 12
+      "max_read_tasks": 12,
+      "max_patch_attempts": 2
     },
-    "workspace_path": "<STATE_DIR>\\repair-workspaces\\public-scripted-sample",
-    "workspace_baseline_hash": "d455401be49383d52f1c0adec9d89066b5a07387c43c4e67d7e0fa3966f63835",
-    "hidden_tests_hash": "cff392a3cb02ec301fb52ea12b8842fb0f13557a291277735d0d3fde6a668652",
-    "current_diff": "--- a/dotenv_loader.py\n+++ b/dotenv_loader.py\n@@ -5,7 +5,7 @@\n import locale\n from pathlib import Path\n \n-DEFAULT_ENCODING: str | None = None\n+DEFAULT_ENCODING: str | None = \"utf-8\"\n \n \n def read_env(path: str | Path, *, encoding: str | None = None) -> str:\n",
+    "workspace_path": "<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060",
+    "workspace_baseline_hash": "1b163957c83f0bdf7480c3d986690b27756f10e7d9a22b8bd5f25854312d5b0b",
+    "hidden_tests_hash": "25e30ec28907733999ca6c71dbe6f5d18915f801e3d6455ba045d73db86b127c",
+    "current_diff": "--- a/model.py\n+++ b/model.py\n@@ -1 +1 @@\n-VALUE = 0\n+VALUE = 2\n",
     "tool_trace": [
       {
         "actor": "tool",
@@ -63,8 +64,8 @@
         "status": "success",
         "result": {
           "status": "ok",
-          "task_id": "blind-python-dotenv-207",
-          "issue_text": "A UTF-8 .env file can raise UnicodeDecodeError on Windows when the locale codec is not UTF-8. Reading an .env file without an explicit encoding should default to UTF-8, while callers that explicitly pass another encoding must keep that behavior. Public report: https://github.com/theskumar/python-dotenv/issues/207",
+          "task_id": "iterative-repair-test",
+          "issue_text": "Change the public behavior to the required value.",
           "repository": "repository",
           "test_command": [
             "{python}",
@@ -83,13 +84,13 @@
             "-v"
           ],
           "editable_paths": [
-            "dotenv_loader.py"
+            "model.py"
           ],
-          "timeout": 20
+          "timeout": 10
         },
-        "created_at": "2026-07-31T08:33:53.392826+00:00",
+        "created_at": "2026-08-01T10:17:44.880576+00:00",
         "duration_ms": 0,
-        "event_id": "event-b859f4ac35ef90c48188"
+        "event_id": "event-76623b346310c06d042d"
       },
       {
         "actor": "tool",
@@ -102,13 +103,13 @@
         "result": {
           "status": "fail",
           "returncode": 1,
-          "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ERROR\n\n======================================================================\nERROR: test_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\tests\\test_public.py\", line 20, in test_default_decodes_utf8_when_platform_locale_is_ascii\n    self.assertEqual(read_env(dotenv), \"ACCOUNT_NAME=涓婃捣\\n\")\n                     ^^^^^^^^^^^^^^^^\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\dotenv_loader.py\", line 17, in read_env\n    return Path(path).read_text(encoding=selected)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\pathlib.py\", line 1028, in read_text\n    return f.read()\n           ^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\encodings\\ascii.py\", line 26, in decode\n    return codecs.ascii_decode(input, self.errors)[0]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeDecodeError: 'ascii' codec can't decode byte 0xe4 in position 13: ordinal not in range(128)\n\n----------------------------------------------------------------------\nRan 1 test in 0.010s\n\nFAILED (errors=1)",
-          "duration_ms": 219,
+          "output": "STDERR:\ntest_behavior (tests.test_public.PublicTest.test_behavior) ... FAIL\n\n======================================================================\nFAIL: test_behavior (tests.test_public.PublicTest.test_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060\\tests\\test_public.py\", line 6, in test_behavior\n    self.assertTrue(model.VALUE == 2)\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)",
+          "duration_ms": 327,
           "command_kind": "public"
         },
-        "created_at": "2026-07-31T08:33:53.621911+00:00",
-        "duration_ms": 228,
-        "event_id": "event-bd136bcdb2153803cd04"
+        "created_at": "2026-08-01T10:17:45.228219+00:00",
+        "duration_ms": 341,
+        "event_id": "event-39b9dab9e5cee05de92f"
       },
       {
         "actor": "verifier",
@@ -121,9 +122,9 @@
           "diff": "",
           "changed_paths": []
         },
-        "created_at": "2026-07-31T08:33:53.621911+00:00",
+        "created_at": "2026-08-01T10:17:45.228219+00:00",
         "duration_ms": 0,
-        "event_id": "event-ae2a59f90c8913ec30f0"
+        "event_id": "event-d478eed7b4d73c4b0e26"
       },
       {
         "actor": "memory",
@@ -133,9 +134,9 @@
         "result": {
           "memories": []
         },
-        "created_at": "2026-07-31T08:33:53.632349+00:00",
+        "created_at": "2026-08-01T10:17:45.241158+00:00",
         "duration_ms": 0,
-        "event_id": "event-771e0d289269c5454cb9"
+        "event_id": "event-993acdc23312f5afd0aa"
       },
       {
         "actor": "provider",
@@ -146,17 +147,17 @@
           "operation": "provider_plan",
           "attempt": 1,
           "status": "success",
-          "timeout_s": 60.0,
-          "remaining_before_attempt_s": 179.75208282470703,
+          "timeout_s": 60,
+          "remaining_before_attempt_s": 179.63838958740234,
           "attempt_limited_by_deadline": false,
           "duration_ms": 0
         },
-        "created_at": "2026-07-31T08:33:53.634512+00:00",
+        "created_at": "2026-08-01T10:17:45.243183+00:00",
         "duration_ms": 0,
-        "event_id": "event-fe2f723365a9ca2950a9"
+        "event_id": "event-a38b7f2e931c21527da3"
       },
       {
-        "event_id": "tool-394622bb23eabe89841d",
+        "event_id": "tool-4446c8e5ec9bb781c653",
         "actor": "read_worker",
         "name": "list_files",
         "arguments": {},
@@ -165,150 +166,38 @@
           "status": "ok",
           "path": ".",
           "files": [
-            "dotenv_loader.py",
+            "model.py",
             "tests/__init__.py",
             "tests/test_public.py",
             "tests/test_regression.py"
           ],
           "truncated": false
         },
-        "started_at": "2026-07-31T08:33:53.645767+00:00",
-        "finished_at": "2026-07-31T08:33:53.648969+00:00",
-        "duration_ms": 2,
+        "started_at": "2026-08-01T10:17:45.252249+00:00",
+        "finished_at": "2026-08-01T10:17:45.255495+00:00",
+        "duration_ms": 3,
         "active_read_workers": 1
       },
       {
-        "event_id": "tool-d766cbe6b46d2406a156",
+        "event_id": "tool-94ef88ecfa81e4c00335",
         "actor": "read_worker",
         "name": "read_file",
         "arguments": {
-          "path": "dotenv_loader.py"
+          "path": "model.py"
         },
         "status": "success",
         "result": {
           "status": "ok",
-          "path": "dotenv_loader.py",
+          "path": "model.py",
           "start_line": 1,
-          "end_line": 17,
-          "total_lines": 17,
-          "content": "1: \"\"\"Minimal third-party-issue reproduction; not copied upstream source code.\"\"\"\n2: \n3: from __future__ import annotations\n4: \n5: import locale\n6: from pathlib import Path\n7: \n8: DEFAULT_ENCODING: str | None = None\n9: \n10: \n11: def read_env(path: str | Path, *, encoding: str | None = None) -> str:\n12:     \"\"\"Read one dotenv-style text file.\"\"\"\n13: \n14:     selected = encoding if encoding is not None else DEFAULT_ENCODING\n15:     if selected is None:\n16:         selected = locale.getpreferredencoding(False)\n17:     return Path(path).read_text(encoding=selected)"
+          "end_line": 1,
+          "total_lines": 1,
+          "content": "1: VALUE = 0"
         },
-        "started_at": "2026-07-31T08:33:53.647794+00:00",
-        "finished_at": "2026-07-31T08:33:53.652586+00:00",
-        "duration_ms": 4,
+        "started_at": "2026-08-01T10:17:45.254697+00:00",
+        "finished_at": "2026-08-01T10:17:45.271980+00:00",
+        "duration_ms": 17,
         "active_read_workers": 2
-      },
-      {
-        "event_id": "tool-3f89082665b62bbb1f97",
-        "actor": "read_worker",
-        "name": "search_code",
-        "arguments": {
-          "query": "UTF-8"
-        },
-        "status": "success",
-        "result": {
-          "status": "ok",
-          "query": "UTF-8",
-          "files_searched": 4,
-          "matches": [
-            {
-              "path": "tests/test_public.py",
-              "line": 15,
-              "preview": "dotenv.write_bytes(\"ACCOUNT_NAME=上海\\n\".encode(\"utf-8\"))"
-            }
-          ],
-          "truncated": false
-        },
-        "started_at": "2026-07-31T08:33:53.650034+00:00",
-        "finished_at": "2026-07-31T08:33:53.656016+00:00",
-        "duration_ms": 6,
-        "active_read_workers": 2
-      },
-      {
-        "event_id": "tool-c9e59e3fb1ce275b5807",
-        "actor": "read_worker",
-        "name": "search_code",
-        "arguments": {
-          "query": "file"
-        },
-        "status": "success",
-        "result": {
-          "status": "ok",
-          "query": "file",
-          "files_searched": 4,
-          "matches": [
-            {
-              "path": "dotenv_loader.py",
-              "line": 12,
-              "preview": "\"\"\"Read one dotenv-style text file.\"\"\""
-            },
-            {
-              "path": "tests/test_public.py",
-              "line": 3,
-              "preview": "import tempfile"
-            },
-            {
-              "path": "tests/test_public.py",
-              "line": 13,
-              "preview": "with tempfile.TemporaryDirectory() as directory:"
-            },
-            {
-              "path": "tests/test_regression.py",
-              "line": 3,
-              "preview": "import tempfile"
-            },
-            {
-              "path": "tests/test_regression.py",
-              "line": 12,
-              "preview": "with tempfile.TemporaryDirectory() as directory:"
-            }
-          ],
-          "truncated": false
-        },
-        "started_at": "2026-07-31T08:33:53.652586+00:00",
-        "finished_at": "2026-07-31T08:33:53.657065+00:00",
-        "duration_ms": 4,
-        "active_read_workers": 2
-      },
-      {
-        "event_id": "tool-f5ff5b121416b27695fc",
-        "actor": "read_worker",
-        "name": "search_code",
-        "arguments": {
-          "query": "raise"
-        },
-        "status": "success",
-        "result": {
-          "status": "ok",
-          "query": "raise",
-          "files_searched": 4,
-          "matches": [],
-          "truncated": false
-        },
-        "started_at": "2026-07-31T08:33:53.652586+00:00",
-        "finished_at": "2026-07-31T08:33:53.657065+00:00",
-        "duration_ms": 4,
-        "active_read_workers": 3
-      },
-      {
-        "event_id": "tool-0ac9264e494d32d33190",
-        "actor": "read_worker",
-        "name": "search_code",
-        "arguments": {
-          "query": "UnicodeDecodeError"
-        },
-        "status": "success",
-        "result": {
-          "status": "ok",
-          "query": "UnicodeDecodeError",
-          "files_searched": 4,
-          "matches": [],
-          "truncated": false
-        },
-        "started_at": "2026-07-31T08:33:53.656016+00:00",
-        "finished_at": "2026-07-31T08:33:53.659248+00:00",
-        "duration_ms": 3,
-        "active_read_workers": 3
       },
       {
         "actor": "provider",
@@ -319,33 +208,36 @@
           "operation": "provider_patch",
           "attempt": 1,
           "status": "success",
-          "timeout_s": 60.0,
-          "remaining_before_attempt_s": 179.72430443763733,
+          "timeout_s": 60,
+          "remaining_before_attempt_s": 179.60756087303162,
           "attempt_limited_by_deadline": false,
           "duration_ms": 0
         },
-        "created_at": "2026-07-31T08:33:53.670257+00:00",
+        "created_at": "2026-08-01T10:17:45.303325+00:00",
         "duration_ms": 0,
-        "event_id": "event-1a043e117209ed2af3a1"
+        "event_id": "event-8ac73c86d103e689e78c"
       },
       {
         "actor": "tool",
         "name": "apply_patch",
         "arguments": {
-          "path": "dotenv_loader.py",
-          "old_text": "DEFAULT_ENCODING: str | None = None",
-          "new_text": "DEFAULT_ENCODING: str | None = \"utf-8\""
+          "path": "model.py",
+          "old_text": "VALUE = 0",
+          "new_text": "VALUE = 1"
         },
         "status": "applied",
         "result": {
           "status": "applied",
-          "path": "dotenv_loader.py",
-          "before_sha256": "48b47c32dedcdea695e13f1f8b805df1676de4bade2c97beac6725771169ec1b",
-          "after_sha256": "c00c6f1c568e8b61fc7c68ddd5a7307280e6cdbba5205a233201845f922ee820"
+          "path": "model.py",
+          "before_sha256": "f40984649caa6bf7bc818863f0e210b68e3b00f16dfc99997f1bd226c34b9c34",
+          "after_sha256": "e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+          "attempt": 1,
+          "diff_sha256": "e84a55145559e20de000e49a0683374cfefbaef1981f8ca1640ffc859b6aa1a4",
+          "repeated_diff": false
         },
-        "created_at": "2026-07-31T08:33:53.670257+00:00",
-        "duration_ms": 8,
-        "event_id": "event-4d33bb3e92ae0eecec97"
+        "created_at": "2026-08-01T10:17:45.303325+00:00",
+        "duration_ms": 30,
+        "event_id": "event-117a36bc19db9a936fea"
       },
       {
         "actor": "tool",
@@ -354,14 +246,29 @@
         "status": "success",
         "result": {
           "status": "ok",
-          "diff": "--- a/dotenv_loader.py\n+++ b/dotenv_loader.py\n@@ -5,7 +5,7 @@\n import locale\n from pathlib import Path\n \n-DEFAULT_ENCODING: str | None = None\n+DEFAULT_ENCODING: str | None = \"utf-8\"\n \n \n def read_env(path: str | Path, *, encoding: str | None = None) -> str:\n",
+          "diff": "--- a/model.py\n+++ b/model.py\n@@ -1 +1 @@\n-VALUE = 0\n+VALUE = 1\n",
           "changed_paths": [
-            "dotenv_loader.py"
+            "model.py"
           ]
         },
-        "created_at": "2026-07-31T08:33:53.670257+00:00",
+        "created_at": "2026-08-01T10:17:45.303325+00:00",
         "duration_ms": 0,
-        "event_id": "event-4ef3765e052b923a7647"
+        "event_id": "event-8986fed50c16588f47dc"
+      },
+      {
+        "actor": "verifier",
+        "name": "diff_progress_guard",
+        "arguments": {},
+        "status": "progress",
+        "result": {
+          "attempt": 1,
+          "diff_sha256": "e84a55145559e20de000e49a0683374cfefbaef1981f8ca1640ffc859b6aa1a4",
+          "repeated_diff": false,
+          "nonempty_diff": true
+        },
+        "created_at": "2026-08-01T10:17:45.303325+00:00",
+        "duration_ms": 0,
+        "event_id": "event-c77fe87793e46b5ebf39"
       },
       {
         "actor": "verifier",
@@ -370,14 +277,183 @@
         "status": "success",
         "result": {
           "status": "ok",
-          "diff": "--- a/dotenv_loader.py\n+++ b/dotenv_loader.py\n@@ -5,7 +5,7 @@\n import locale\n from pathlib import Path\n \n-DEFAULT_ENCODING: str | None = None\n+DEFAULT_ENCODING: str | None = \"utf-8\"\n \n \n def read_env(path: str | Path, *, encoding: str | None = None) -> str:\n",
+          "diff": "--- a/model.py\n+++ b/model.py\n@@ -1 +1 @@\n-VALUE = 0\n+VALUE = 1\n",
           "changed_paths": [
-            "dotenv_loader.py"
+            "model.py"
           ]
         },
-        "created_at": "2026-07-31T08:33:53.677280+00:00",
+        "created_at": "2026-08-01T10:17:45.311472+00:00",
         "duration_ms": 0,
-        "event_id": "event-f19f8334f23bf94ee435"
+        "event_id": "event-50e9b6380546b8938f41"
+      },
+      {
+        "actor": "verifier",
+        "name": "run_tests",
+        "arguments": {},
+        "status": "fail",
+        "result": {
+          "phase": "candidate",
+          "command_kind": "public",
+          "result": {
+            "status": "fail",
+            "returncode": 1,
+            "output": "STDERR:\ntest_behavior (tests.test_public.PublicTest.test_behavior) ... FAIL\n\n======================================================================\nFAIL: test_behavior (tests.test_public.PublicTest.test_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060\\tests\\test_public.py\", line 6, in test_behavior\n    self.assertTrue(model.VALUE == 2)\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)",
+            "duration_ms": 124,
+            "command_kind": "public"
+          }
+        },
+        "created_at": "2026-08-01T10:17:45.435232+00:00",
+        "duration_ms": 0,
+        "event_id": "event-b9a2b76a5313fcf59e73"
+      },
+      {
+        "actor": "verifier",
+        "name": "run_tests",
+        "arguments": {},
+        "status": "fail",
+        "result": {
+          "phase": "regression",
+          "command_kind": "regression",
+          "result": {
+            "status": "fail",
+            "returncode": 1,
+            "output": "STDERR:\ntest_behavior (test_public.PublicTest.test_behavior) ... FAIL\ntest_behavior (test_regression.RegressionTest.test_behavior) ... FAIL\n\n======================================================================\nFAIL: test_behavior (test_public.PublicTest.test_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060\\tests\\test_public.py\", line 6, in test_behavior\n    self.assertTrue(model.VALUE == 2)\nAssertionError: False is not true\n\n======================================================================\nFAIL: test_behavior (test_regression.RegressionTest.test_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060\\tests\\test_regression.py\", line 6, in test_behavior\n    self.assertTrue(model.VALUE == 2)\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 2 tests in 0.001s\n\nFAILED (failures=2)",
+            "duration_ms": 133,
+            "command_kind": "regression"
+          }
+        },
+        "created_at": "2026-08-01T10:17:45.570006+00:00",
+        "duration_ms": 0,
+        "event_id": "event-d66bf8f78ac71ddbba7e"
+      },
+      {
+        "actor": "tool",
+        "name": "rollback_workspace",
+        "arguments": {
+          "attempt": 1
+        },
+        "status": "rolled_back",
+        "result": {
+          "status": "rolled_back",
+          "template_hash_before": "1b163957c83f0bdf7480c3d986690b27756f10e7d9a22b8bd5f25854312d5b0b",
+          "template_hash_after": "1b163957c83f0bdf7480c3d986690b27756f10e7d9a22b8bd5f25854312d5b0b",
+          "workspace_hash_before": "5fe3ed8fdca1092ca3357543d61255550d8b667660a957c46aacdaab5b171455",
+          "workspace_hash_after": "1b163957c83f0bdf7480c3d986690b27756f10e7d9a22b8bd5f25854312d5b0b",
+          "changed_paths_before": [
+            "model.py"
+          ],
+          "changed_paths_after": [],
+          "diff_before_sha256": "e84a55145559e20de000e49a0683374cfefbaef1981f8ca1640ffc859b6aa1a4",
+          "post_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "created_at": "2026-08-01T10:17:45.628359+00:00",
+        "duration_ms": 49,
+        "event_id": "event-8916be7023e218c6a56c"
+      },
+      {
+        "actor": "provider",
+        "name": "provider_plan",
+        "arguments": {},
+        "status": "success",
+        "result": {
+          "operation": "provider_plan",
+          "attempt": 1,
+          "status": "success",
+          "timeout_s": 60,
+          "remaining_before_attempt_s": 179.24985456466675,
+          "attempt_limited_by_deadline": false,
+          "duration_ms": 0
+        },
+        "created_at": "2026-08-01T10:17:45.630721+00:00",
+        "duration_ms": 0,
+        "event_id": "event-7851a63efa3ffbc17399"
+      },
+      {
+        "actor": "provider",
+        "name": "provider_patch",
+        "arguments": {},
+        "status": "success",
+        "result": {
+          "operation": "provider_patch",
+          "attempt": 1,
+          "status": "success",
+          "timeout_s": 60,
+          "remaining_before_attempt_s": 179.2446186542511,
+          "attempt_limited_by_deadline": false,
+          "duration_ms": 0
+        },
+        "created_at": "2026-08-01T10:17:45.660327+00:00",
+        "duration_ms": 0,
+        "event_id": "event-87dc52454deb09fc5b84"
+      },
+      {
+        "actor": "tool",
+        "name": "apply_patch",
+        "arguments": {
+          "path": "model.py",
+          "old_text": "VALUE = 0",
+          "new_text": "VALUE = 2"
+        },
+        "status": "applied",
+        "result": {
+          "status": "applied",
+          "path": "model.py",
+          "before_sha256": "f40984649caa6bf7bc818863f0e210b68e3b00f16dfc99997f1bd226c34b9c34",
+          "after_sha256": "3da6c4b355804b265ecef19dfe5945fe2790a8cc38dc9d0547fb1634c94cbbe7",
+          "attempt": 2,
+          "diff_sha256": "67979449f90f91f217c017c6d9d5d5eb0f57b2c9ef20e2db2228bed49076a9e1",
+          "repeated_diff": false
+        },
+        "created_at": "2026-08-01T10:17:45.660327+00:00",
+        "duration_ms": 23,
+        "event_id": "event-64e13a91dd005e0cfef5"
+      },
+      {
+        "actor": "tool",
+        "name": "show_diff",
+        "arguments": {},
+        "status": "success",
+        "result": {
+          "status": "ok",
+          "diff": "--- a/model.py\n+++ b/model.py\n@@ -1 +1 @@\n-VALUE = 0\n+VALUE = 2\n",
+          "changed_paths": [
+            "model.py"
+          ]
+        },
+        "created_at": "2026-08-01T10:17:45.660327+00:00",
+        "duration_ms": 0,
+        "event_id": "event-81ed4846b94a191b9885"
+      },
+      {
+        "actor": "verifier",
+        "name": "diff_progress_guard",
+        "arguments": {},
+        "status": "progress",
+        "result": {
+          "attempt": 2,
+          "diff_sha256": "67979449f90f91f217c017c6d9d5d5eb0f57b2c9ef20e2db2228bed49076a9e1",
+          "repeated_diff": false,
+          "nonempty_diff": true
+        },
+        "created_at": "2026-08-01T10:17:45.660327+00:00",
+        "duration_ms": 0,
+        "event_id": "event-1f904236dd199f25aaa9"
+      },
+      {
+        "actor": "verifier",
+        "name": "show_diff",
+        "arguments": {},
+        "status": "success",
+        "result": {
+          "status": "ok",
+          "diff": "--- a/model.py\n+++ b/model.py\n@@ -1 +1 @@\n-VALUE = 0\n+VALUE = 2\n",
+          "changed_paths": [
+            "model.py"
+          ]
+        },
+        "created_at": "2026-08-01T10:17:45.676235+00:00",
+        "duration_ms": 0,
+        "event_id": "event-c833c42473e21e9c172c"
       },
       {
         "actor": "verifier",
@@ -385,19 +461,19 @@
         "arguments": {},
         "status": "pass",
         "result": {
-          "phase": "after_patch",
+          "phase": "candidate",
           "command_kind": "public",
           "result": {
             "status": "pass",
             "returncode": 0,
-            "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.014s\n\nOK",
-            "duration_ms": 201,
+            "output": "STDERR:\ntest_behavior (tests.test_public.PublicTest.test_behavior) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK",
+            "duration_ms": 140,
             "command_kind": "public"
           }
         },
-        "created_at": "2026-07-31T08:33:53.879510+00:00",
+        "created_at": "2026-08-01T10:17:45.817554+00:00",
         "duration_ms": 0,
-        "event_id": "event-e574009e9ed5bb6e7774"
+        "event_id": "event-735e5c1d74045de986f2"
       },
       {
         "actor": "verifier",
@@ -410,14 +486,14 @@
           "result": {
             "status": "pass",
             "returncode": 0,
-            "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ok\ntest_explicit_non_utf8_encoding_is_preserved (test_regression.ExplicitEncodingRegressionTests.test_explicit_non_utf8_encoding_is_preserved) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.046s\n\nOK",
-            "duration_ms": 245,
+            "output": "STDERR:\ntest_behavior (test_public.PublicTest.test_behavior) ... ok\ntest_behavior (test_regression.RegressionTest.test_behavior) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK",
+            "duration_ms": 143,
             "command_kind": "regression"
           }
         },
-        "created_at": "2026-07-31T08:33:54.124814+00:00",
+        "created_at": "2026-08-01T10:17:45.962619+00:00",
         "duration_ms": 0,
-        "event_id": "event-5e93a63027481a79e42a"
+        "event_id": "event-72a902d6e5716b33b8fa"
       },
       {
         "actor": "verifier",
@@ -427,12 +503,12 @@
         "result": {
           "status": "pass",
           "returncode": 0,
-          "duration_ms": 254,
-          "output_sha256": "6c950e6d3fbd7d1eca736e72f802ae939c441b6bfdd575f68dfe5b3120f0176b"
+          "duration_ms": 142,
+          "output_sha256": "de754db26410bf40ea195ac726ac1d47e6c91329e40fad5f152c89d767a4dc02"
         },
-        "created_at": "2026-07-31T08:33:54.380438+00:00",
+        "created_at": "2026-08-01T10:17:46.111743+00:00",
         "duration_ms": 0,
-        "event_id": "event-8ed57761837c1e9e851b"
+        "event_id": "event-7c48569ca13c3e3a23bb"
       },
       {
         "actor": "verifier",
@@ -442,17 +518,17 @@
         "result": {
           "status": "accepted",
           "report": {
-            "root_cause": "The repository leaves its documented text encoding default unset, so behavior depends on the process locale.",
-            "summary": "Use the public issue's UTF-8 default while preserving explicit encoding overrides.",
-            "evidence": "The public test fails before the source change; verification must rerun public, regression, and private hidden tests.",
+            "root_cause": "The baseline value does not meet the public contract.",
+            "summary": "Set the value to 2.",
+            "evidence": "The public and regression tests define the behavior.",
             "changed_files": [
-              "dotenv_loader.py"
+              "model.py"
             ]
           }
         },
-        "created_at": "2026-07-31T08:33:54.385589+00:00",
+        "created_at": "2026-08-01T10:17:46.111743+00:00",
         "duration_ms": 0,
-        "event_id": "event-32ad7d36b3ae092ef1fd"
+        "event_id": "event-100609d216c57046e533"
       },
       {
         "actor": "memory",
@@ -460,101 +536,31 @@
         "arguments": {},
         "status": "inserted",
         "result": {
-          "memory_id": "repair-mem-cc20fc5e735810dc1111",
+          "memory_id": "repair-mem-4ccee85ac928390e991c",
           "source_provider": "scripted",
-          "source_task_id": "blind-python-dotenv-207"
+          "source_task_id": "iterative-repair-test"
         },
-        "created_at": "2026-07-31T08:33:54.402170+00:00",
+        "created_at": "2026-08-01T10:17:46.135839+00:00",
         "duration_ms": 0,
-        "event_id": "event-7e51701ad5536b4e5829"
+        "event_id": "event-985e3c72b8f110e6f204"
       }
     ],
     "baseline_result": {
       "status": "fail",
       "returncode": 1,
-      "output": "STDERR:\ntest_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii) ... ERROR\n\n======================================================================\nERROR: test_default_decodes_utf8_when_platform_locale_is_ascii (tests.test_public.DefaultEncodingTests.test_default_decodes_utf8_when_platform_locale_is_ascii)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\tests\\test_public.py\", line 20, in test_default_decodes_utf8_when_platform_locale_is_ascii\n    self.assertEqual(read_env(dotenv), \"ACCOUNT_NAME=涓婃捣\\n\")\n                     ^^^^^^^^^^^^^^^^\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-sample\\dotenv_loader.py\", line 17, in read_env\n    return Path(path).read_text(encoding=selected)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\pathlib.py\", line 1028, in read_text\n    return f.read()\n           ^^^^^^^^\n  File \"<PYTHON_RUNTIME>\\Lib\\encodings\\ascii.py\", line 26, in decode\n    return codecs.ascii_decode(input, self.errors)[0]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeDecodeError: 'ascii' codec can't decode byte 0xe4 in position 13: ordinal not in range(128)\n\n----------------------------------------------------------------------\nRan 1 test in 0.010s\n\nFAILED (errors=1)",
-      "duration_ms": 219,
+      "output": "STDERR:\ntest_behavior (tests.test_public.PublicTest.test_behavior) ... FAIL\n\n======================================================================\nFAIL: test_behavior (tests.test_public.PublicTest.test_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060\\tests\\test_public.py\", line 6, in test_behavior\n    self.assertTrue(model.VALUE == 2)\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)",
+      "duration_ms": 327,
       "command_kind": "public"
     },
     "memory_hits": [],
     "plan": {
-      "summary": "Inspect editable source and search for symbols named in the public issue. This is deterministic demo behavior.",
-      "read_tasks": [
-        {
-          "task_id": "search-1",
-          "tool": "search_code",
-          "arguments": {
-            "query": "UTF-8"
-          }
-        },
-        {
-          "task_id": "search-2",
-          "tool": "search_code",
-          "arguments": {
-            "query": "file"
-          }
-        },
-        {
-          "task_id": "search-3",
-          "tool": "search_code",
-          "arguments": {
-            "query": "raise"
-          }
-        },
-        {
-          "task_id": "search-4",
-          "tool": "search_code",
-          "arguments": {
-            "query": "UnicodeDecodeError"
-          }
-        }
-      ]
+      "summary": "Inspect the editable source.",
+      "read_tasks": []
     },
-    "read_tasks": [
-      {
-        "task_id": "generic-list-files",
-        "tool": "list_files",
-        "arguments": {}
-      },
-      {
-        "task_id": "editable-d1a4642a01a4",
-        "tool": "read_file",
-        "arguments": {
-          "path": "dotenv_loader.py"
-        }
-      },
-      {
-        "task_id": "search-1",
-        "tool": "search_code",
-        "arguments": {
-          "query": "UTF-8"
-        }
-      },
-      {
-        "task_id": "search-2",
-        "tool": "search_code",
-        "arguments": {
-          "query": "file"
-        }
-      },
-      {
-        "task_id": "search-3",
-        "tool": "search_code",
-        "arguments": {
-          "query": "raise"
-        }
-      },
-      {
-        "task_id": "search-4",
-        "tool": "search_code",
-        "arguments": {
-          "query": "UnicodeDecodeError"
-        }
-      }
-    ],
+    "read_tasks": [],
     "evidence": [
       {
-        "evidence_id": "repair-ev-394622bb23eabe89841d",
+        "evidence_id": "repair-ev-4446c8e5ec9bb781c653",
         "task_id": "generic-list-files",
         "tool": "list_files",
         "arguments": {},
@@ -563,166 +569,121 @@
           "status": "ok",
           "path": ".",
           "files": [
-            "dotenv_loader.py",
+            "model.py",
             "tests/__init__.py",
             "tests/test_public.py",
             "tests/test_regression.py"
           ],
           "truncated": false
         },
-        "started_at": "2026-07-31T08:33:53.645767+00:00",
-        "finished_at": "2026-07-31T08:33:53.648969+00:00",
-        "duration_ms": 2,
+        "started_at": "2026-08-01T10:17:45.252249+00:00",
+        "finished_at": "2026-08-01T10:17:45.255495+00:00",
+        "duration_ms": 3,
         "active_read_workers": 1
       },
       {
-        "evidence_id": "repair-ev-d766cbe6b46d2406a156",
-        "task_id": "editable-d1a4642a01a4",
+        "evidence_id": "repair-ev-94ef88ecfa81e4c00335",
+        "task_id": "editable-fada037ad086",
         "tool": "read_file",
         "arguments": {
-          "path": "dotenv_loader.py"
+          "path": "model.py"
         },
         "status": "success",
         "result": {
           "status": "ok",
-          "path": "dotenv_loader.py",
+          "path": "model.py",
           "start_line": 1,
-          "end_line": 17,
-          "total_lines": 17,
-          "content": "1: \"\"\"Minimal third-party-issue reproduction; not copied upstream source code.\"\"\"\n2: \n3: from __future__ import annotations\n4: \n5: import locale\n6: from pathlib import Path\n7: \n8: DEFAULT_ENCODING: str | None = None\n9: \n10: \n11: def read_env(path: str | Path, *, encoding: str | None = None) -> str:\n12:     \"\"\"Read one dotenv-style text file.\"\"\"\n13: \n14:     selected = encoding if encoding is not None else DEFAULT_ENCODING\n15:     if selected is None:\n16:         selected = locale.getpreferredencoding(False)\n17:     return Path(path).read_text(encoding=selected)"
+          "end_line": 1,
+          "total_lines": 1,
+          "content": "1: VALUE = 0"
         },
-        "started_at": "2026-07-31T08:33:53.647794+00:00",
-        "finished_at": "2026-07-31T08:33:53.652586+00:00",
-        "duration_ms": 4,
+        "started_at": "2026-08-01T10:17:45.254697+00:00",
+        "finished_at": "2026-08-01T10:17:45.271980+00:00",
+        "duration_ms": 17,
         "active_read_workers": 2
-      },
-      {
-        "evidence_id": "repair-ev-3f89082665b62bbb1f97",
-        "task_id": "search-1",
-        "tool": "search_code",
-        "arguments": {
-          "query": "UTF-8"
-        },
-        "status": "success",
-        "result": {
-          "status": "ok",
-          "query": "UTF-8",
-          "files_searched": 4,
-          "matches": [
-            {
-              "path": "tests/test_public.py",
-              "line": 15,
-              "preview": "dotenv.write_bytes(\"ACCOUNT_NAME=上海\\n\".encode(\"utf-8\"))"
-            }
-          ],
-          "truncated": false
-        },
-        "started_at": "2026-07-31T08:33:53.650034+00:00",
-        "finished_at": "2026-07-31T08:33:53.656016+00:00",
-        "duration_ms": 6,
-        "active_read_workers": 2
-      },
-      {
-        "evidence_id": "repair-ev-c9e59e3fb1ce275b5807",
-        "task_id": "search-2",
-        "tool": "search_code",
-        "arguments": {
-          "query": "file"
-        },
-        "status": "success",
-        "result": {
-          "status": "ok",
-          "query": "file",
-          "files_searched": 4,
-          "matches": [
-            {
-              "path": "dotenv_loader.py",
-              "line": 12,
-              "preview": "\"\"\"Read one dotenv-style text file.\"\"\""
-            },
-            {
-              "path": "tests/test_public.py",
-              "line": 3,
-              "preview": "import tempfile"
-            },
-            {
-              "path": "tests/test_public.py",
-              "line": 13,
-              "preview": "with tempfile.TemporaryDirectory() as directory:"
-            },
-            {
-              "path": "tests/test_regression.py",
-              "line": 3,
-              "preview": "import tempfile"
-            },
-            {
-              "path": "tests/test_regression.py",
-              "line": 12,
-              "preview": "with tempfile.TemporaryDirectory() as directory:"
-            }
-          ],
-          "truncated": false
-        },
-        "started_at": "2026-07-31T08:33:53.652586+00:00",
-        "finished_at": "2026-07-31T08:33:53.657065+00:00",
-        "duration_ms": 4,
-        "active_read_workers": 2
-      },
-      {
-        "evidence_id": "repair-ev-f5ff5b121416b27695fc",
-        "task_id": "search-3",
-        "tool": "search_code",
-        "arguments": {
-          "query": "raise"
-        },
-        "status": "success",
-        "result": {
-          "status": "ok",
-          "query": "raise",
-          "files_searched": 4,
-          "matches": [],
-          "truncated": false
-        },
-        "started_at": "2026-07-31T08:33:53.652586+00:00",
-        "finished_at": "2026-07-31T08:33:53.657065+00:00",
-        "duration_ms": 4,
-        "active_read_workers": 3
-      },
-      {
-        "evidence_id": "repair-ev-0ac9264e494d32d33190",
-        "task_id": "search-4",
-        "tool": "search_code",
-        "arguments": {
-          "query": "UnicodeDecodeError"
-        },
-        "status": "success",
-        "result": {
-          "status": "ok",
-          "query": "UnicodeDecodeError",
-          "files_searched": 4,
-          "matches": [],
-          "truncated": false
-        },
-        "started_at": "2026-07-31T08:33:53.656016+00:00",
-        "finished_at": "2026-07-31T08:33:53.659248+00:00",
-        "duration_ms": 3,
-        "active_read_workers": 3
       }
     ],
     "patch_proposal": {
-      "path": "dotenv_loader.py",
-      "old_text": "DEFAULT_ENCODING: str | None = None",
-      "new_text": "DEFAULT_ENCODING: str | None = \"utf-8\"",
-      "root_cause": "The repository leaves its documented text encoding default unset, so behavior depends on the process locale.",
-      "summary": "Use the public issue's UTF-8 default while preserving explicit encoding overrides.",
-      "evidence": "The public test fails before the source change; verification must rerun public, regression, and private hidden tests."
+      "path": "model.py",
+      "old_text": "VALUE = 0",
+      "new_text": "VALUE = 2",
+      "root_cause": "The baseline value does not meet the public contract.",
+      "summary": "Set the value to 2.",
+      "evidence": "The public and regression tests define the behavior."
     },
     "patch_result": {
       "status": "applied",
-      "path": "dotenv_loader.py",
-      "before_sha256": "48b47c32dedcdea695e13f1f8b805df1676de4bade2c97beac6725771169ec1b",
-      "after_sha256": "c00c6f1c568e8b61fc7c68ddd5a7307280e6cdbba5205a233201845f922ee820"
+      "path": "model.py",
+      "before_sha256": "f40984649caa6bf7bc818863f0e210b68e3b00f16dfc99997f1bd226c34b9c34",
+      "after_sha256": "3da6c4b355804b265ecef19dfe5945fe2790a8cc38dc9d0547fb1634c94cbbe7",
+      "attempt": 2,
+      "diff_sha256": "67979449f90f91f217c017c6d9d5d5eb0f57b2c9ef20e2db2228bed49076a9e1",
+      "repeated_diff": false
     },
+    "patch_attempt": 2,
+    "repair_feedback": {
+      "attempt": 1,
+      "failure_stage": "public_tests",
+      "summary": "public_tests_passed, regression_passed",
+      "patch_status": "applied",
+      "public_test_status": "fail",
+      "regression_test_status": "fail",
+      "public_test_output": "STDERR:\ntest_behavior (tests.test_public.PublicTest.test_behavior) ... FAIL\n\n======================================================================\nFAIL: test_behavior (tests.test_public.PublicTest.test_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060\\tests\\test_public.py\", line 6, in test_behavior\n    self.assertTrue(model.VALUE == 2)\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)",
+      "regression_test_output": "STDERR:\ntest_behavior (test_public.PublicTest.test_behavior) ... FAIL\ntest_behavior (test_regression.RegressionTest.test_behavior) ... FAIL\n\n======================================================================\nFAIL: test_behavior (test_public.PublicTest.test_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060\\tests\\test_public.py\", line 6, in test_behavior\n    self.assertTrue(model.VALUE == 2)\nAssertionError: False is not true\n\n======================================================================\nFAIL: test_behavior (test_regression.RegressionTest.test_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<STATE_DIR>\\repair-workspaces\\public-scripted-iterative-v060\\tests\\test_regression.py\", line 6, in test_behavior\n    self.assertTrue(model.VALUE == 2)\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 2 tests in 0.001s\n\nFAILED (failures=2)",
+      "changed_paths": [
+        "model.py"
+      ],
+      "previous_diff_sha256": "e84a55145559e20de000e49a0683374cfefbaef1981f8ca1640ffc859b6aa1a4"
+    },
+    "attempt_history": [
+      {
+        "attempt": 1,
+        "proposal_summary": "Set the value to 1.",
+        "changed_paths": [
+          "model.py"
+        ],
+        "diff_sha256": "e84a55145559e20de000e49a0683374cfefbaef1981f8ca1640ffc859b6aa1a4",
+        "patch_status": "applied",
+        "public_test_status": "fail",
+        "regression_test_status": "fail",
+        "failure_stage": "public_tests"
+      },
+      {
+        "attempt": 2,
+        "proposal_summary": "Set the value to 2.",
+        "changed_paths": [
+          "model.py"
+        ],
+        "diff_sha256": "67979449f90f91f217c017c6d9d5d5eb0f57b2c9ef20e2db2228bed49076a9e1",
+        "patch_status": "applied",
+        "public_test_status": "pass",
+        "regression_test_status": "pass",
+        "failure_stage": null
+      }
+    ],
+    "candidate_verification": {
+      "attempt": 2,
+      "passed": true,
+      "nonempty_diff": true,
+      "legal_paths": true,
+      "public_tests_passed": true,
+      "regression_passed": true,
+      "public_test_status": "pass",
+      "regression_test_status": "pass",
+      "public_test_output": "STDERR:\ntest_behavior (tests.test_public.PublicTest.test_behavior) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK",
+      "regression_test_output": "STDERR:\ntest_behavior (test_public.PublicTest.test_behavior) ... ok\ntest_behavior (test_regression.RegressionTest.test_behavior) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK",
+      "changed_paths": [
+        "model.py"
+      ],
+      "diff_sha256": "67979449f90f91f217c017c6d9d5d5eb0f57b2c9ef20e2db2228bed49076a9e1",
+      "failure_stage": null,
+      "reasons": []
+    },
+    "patch_diff_history": [
+      "e84a55145559e20de000e49a0683374cfefbaef1981f8ca1640ffc859b6aa1a4",
+      "67979449f90f91f217c017c6d9d5d5eb0f57b2c9ef20e2db2228bed49076a9e1"
+    ],
+    "rollback_count": 1,
     "verification": {
       "passed": true,
       "baseline_failed": true,
@@ -740,35 +701,48 @@
         "load_task": 1,
         "reproduce_failure": 1,
         "retrieve_memory": 1,
-        "plan": 1,
-        "dispatch_read_workers": 1,
-        "aggregate": 1,
-        "read_worker": 6,
-        "patch": 1,
-        "verify": 1,
+        "plan": 2,
+        "dispatch_read_workers": 2,
+        "aggregate": 2,
+        "read_worker": 2,
+        "patch": 2,
+        "verify_candidate": 2,
+        "prepare_retry": 1,
+        "verify_hidden": 1,
         "commit_memory": 1,
         "finalize": 1
       },
       "baseline_failed": true,
       "memory_hits": 0,
       "memory_sources": [],
-      "read_tasks": 6,
-      "dispatched_read_workers": 6,
-      "evidence_records": 6,
-      "successful_read_workers": 6,
-      "max_active_read_workers": 3,
-      "verification_passed": true,
+      "read_tasks": 0,
+      "dispatched_read_workers": 0,
+      "evidence_records": 2,
+      "successful_read_workers": 2,
+      "max_active_read_workers": 2,
+      "patch_attempts": 2,
+      "candidate_verification_runs": 2,
+      "candidate_verification_passed": true,
       "max_workspace_operations": 1,
+      "repair_retries": 1,
+      "rollback_count": 1,
+      "retry_reasons": [
+        "public_tests"
+      ],
+      "hidden_verification_runs": 1,
+      "verification_passed": true,
+      "successful_attempt": 2,
       "memory_written": true,
-      "memory_id": "repair-mem-cc20fc5e735810dc1111",
+      "memory_id": "repair-mem-4ccee85ac928390e991c",
       "memory_source_provider": "scripted",
-      "memory_source_task_id": "blind-python-dotenv-207",
-      "elapsed_ms": 1016,
+      "memory_source_task_id": "iterative-repair-test",
+      "elapsed_ms": 1256,
       "memory_assisted": false,
-      "evaluation_eligible": false
+      "evaluation_eligible": false,
+      "termination_reason": "completed"
     },
-    "started_at_epoch": 1785486833.385584,
-    "deadline_at_epoch": 1785487013.385584,
+    "started_at_epoch": 1785579464.8805764,
+    "deadline_at_epoch": 1785579644.8805764,
     "paused_at_epoch": null,
     "paused_after_node": null,
     "total_paused_s": 0.0

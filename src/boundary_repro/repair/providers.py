@@ -13,8 +13,10 @@ from typing import Any, Protocol, TypeVar
 from pydantic import ValidationError
 
 from boundary_repro.repair.models import (
+    AttemptRecord,
     PatchProposal,
     ReadTask,
+    RepairFeedback,
     RepairPlan,
     StrictRepairPlanOutput,
 )
@@ -66,6 +68,10 @@ class RepairProvider(Protocol):
         task: dict[str, Any],
         baseline: dict[str, Any],
         memory_hits: list[dict[str, Any]],
+        patch_attempt: int = 1,
+        repair_feedback: RepairFeedback | None = None,
+        attempt_history: list[AttemptRecord] | None = None,
+        evidence: list[dict[str, Any]] | None = None,
     ) -> RepairPlan: ...
 
     async def apatch(
@@ -75,6 +81,9 @@ class RepairProvider(Protocol):
         baseline: dict[str, Any],
         evidence: list[dict[str, Any]],
         memory_hits: list[dict[str, Any]],
+        patch_attempt: int = 1,
+        repair_feedback: RepairFeedback | None = None,
+        attempt_history: list[AttemptRecord] | None = None,
     ) -> PatchProposal: ...
 
 
@@ -204,8 +213,19 @@ class ScriptedRepairProvider:
         task: dict[str, Any],
         baseline: dict[str, Any],
         memory_hits: list[dict[str, Any]],
+        patch_attempt: int = 1,
+        repair_feedback: RepairFeedback | None = None,
+        attempt_history: list[AttemptRecord] | None = None,
+        evidence: list[dict[str, Any]] | None = None,
     ) -> RepairPlan:
-        del baseline, memory_hits
+        del (
+            baseline,
+            memory_hits,
+            patch_attempt,
+            repair_feedback,
+            attempt_history,
+            evidence,
+        )
         issue = str(task["issue_text"])
         tokens = [
             token
@@ -244,8 +264,17 @@ class ScriptedRepairProvider:
         baseline: dict[str, Any],
         evidence: list[dict[str, Any]],
         memory_hits: list[dict[str, Any]],
+        patch_attempt: int = 1,
+        repair_feedback: RepairFeedback | None = None,
+        attempt_history: list[AttemptRecord] | None = None,
     ) -> PatchProposal:
-        del baseline, memory_hits
+        del (
+            baseline,
+            memory_hits,
+            patch_attempt,
+            repair_feedback,
+            attempt_history,
+        )
         issue = str(task["issue_text"])
         source_records = [
             item.get("result", {})
@@ -327,6 +356,10 @@ class GroqRepairProvider:
         task: dict[str, Any],
         baseline: dict[str, Any],
         memory_hits: list[dict[str, Any]],
+        patch_attempt: int = 1,
+        repair_feedback: RepairFeedback | None = None,
+        attempt_history: list[AttemptRecord] | None = None,
+        evidence: list[dict[str, Any]] | None = None,
     ) -> RepairPlan:
         payload = await self._complete_json(
             {
@@ -335,6 +368,12 @@ class GroqRepairProvider:
                 "public_task": task,
                 "failing_public_test": baseline,
                 "verified_memories_for_prioritization_only": memory_hits[:5],
+                "patch_attempt": patch_attempt,
+                "repair_feedback": _model_payload(repair_feedback),
+                "prior_attempt_history": _model_list_payload(
+                    attempt_history
+                ),
+                "existing_read_only_evidence": list(evidence or []),
                 "constraints": [
                     "No tools are callable in this provider request.",
                     (
@@ -365,6 +404,9 @@ class GroqRepairProvider:
         baseline: dict[str, Any],
         evidence: list[dict[str, Any]],
         memory_hits: list[dict[str, Any]],
+        patch_attempt: int = 1,
+        repair_feedback: RepairFeedback | None = None,
+        attempt_history: list[AttemptRecord] | None = None,
     ) -> PatchProposal:
         payload = await self._complete_json(
             {
@@ -374,6 +416,11 @@ class GroqRepairProvider:
                 "failing_public_test": baseline,
                 "read_only_evidence": evidence,
                 "verified_memories_for_prioritization_only": memory_hits[:5],
+                "patch_attempt": patch_attempt,
+                "repair_feedback": _model_payload(repair_feedback),
+                "prior_attempt_history": _model_list_payload(
+                    attempt_history
+                ),
                 "constraints": [
                     "No tools are callable in this provider request.",
                     (
@@ -532,3 +579,13 @@ def _assert_strict_objects(value: Any, path: str = "$") -> None:
 
 _REPAIR_PLAN_SCHEMA = _strict_schema(StrictRepairPlanOutput)
 _PATCH_PROPOSAL_SCHEMA = _strict_schema(PatchProposal)
+
+
+def _model_payload(model: Any) -> dict[str, Any] | None:
+    if model is None:
+        return None
+    return dict(model.model_dump(mode="json"))
+
+
+def _model_list_payload(models: list[Any] | None) -> list[dict[str, Any]]:
+    return [dict(model.model_dump(mode="json")) for model in models or []]

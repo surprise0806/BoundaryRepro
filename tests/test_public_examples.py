@@ -17,6 +17,13 @@ WINDOWS_ABSOLUTE_PATH = re.compile(
 WINDOWS_USER_DIRECTORY = re.compile(
     r"(?i)(?:\\\\|\\|/)Users(?:\\\\|\\|/)"
 )
+APPDATA_DIRECTORY = re.compile(
+    r"(?i)(?:\\\\|\\|/)AppData(?:\\\\|\\|/)"
+)
+UNIX_LOCAL_ABSOLUTE_PATH = re.compile(
+    r"(?i)(?<![:A-Za-z0-9<])/"
+    r"(?:Users|home|tmp|var/tmp|opt|workspace|mnt|private)(?:/|\\)"
+)
 API_KEY = re.compile(
     r"\b(?:gsk_[A-Za-z0-9_-]{12,}|sk-[A-Za-z0-9_-]{12,}|"
     r"ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
@@ -54,6 +61,10 @@ def test_public_examples_contain_no_local_paths_or_api_keys() -> None:
             violations.append(f"{example.name}: Windows absolute path")
         if WINDOWS_USER_DIRECTORY.search(text):
             violations.append(f"{example.name}: Windows user directory")
+        if APPDATA_DIRECTORY.search(text):
+            violations.append(f"{example.name}: AppData directory")
+        if UNIX_LOCAL_ABSOLUTE_PATH.search(text):
+            violations.append(f"{example.name}: Unix absolute path")
         if API_KEY.search(text) or NAMED_API_KEY.search(text):
             violations.append(f"{example.name}: API key pattern")
         if local_username and local_username.casefold() in text.casefold():
@@ -63,17 +74,49 @@ def test_public_examples_contain_no_local_paths_or_api_keys() -> None:
 
 
 def test_scripted_sample_is_current_completed_and_ineligible() -> None:
-    payload = json.loads(SAMPLE_TRACE.read_text(encoding="utf-8"))
+    text = SAMPLE_TRACE.read_text(encoding="utf-8")
+    payload = json.loads(text)
+    state = payload["state"]
+    metrics = state["metrics"]
 
     assert payload["status"] == "completed"
-    assert payload["sample_metadata"]["boundary_repro_version"] == "0.5.2"
+    assert payload["sample_metadata"]["boundary_repro_version"] == "0.6.0"
     assert payload["sample_metadata"]["provider"] == "scripted"
-    assert payload["state"]["provider"] == "scripted"
-    assert payload["state"]["verification"]["passed"] is True
-    assert payload["state"]["metrics"]["evaluation_eligible"] is False
+    assert state["provider"] == "scripted"
+    assert state["verification"]["passed"] is True
+    assert metrics["evaluation_eligible"] is False
+    assert state["patch_attempt"] >= 2
+    assert metrics["patch_attempts"] >= 2
+    assert state["rollback_count"] >= 1
+    assert metrics["rollback_count"] >= 1
+    assert state["repair_feedback"]["attempt"] == 1
+    assert state["repair_feedback"]["failure_stage"] == "public_tests"
+    assert state["attempt_history"][0]["failure_stage"] is not None
+    assert state["attempt_history"][0]["public_test_status"] == "fail"
+    assert state["attempt_history"][-1]["failure_stage"] is None
+    assert state["attempt_history"][-1]["public_test_status"] == "pass"
+    assert metrics["successful_attempt"] == state["patch_attempt"]
+    candidate_statuses = [
+        event["status"]
+        for event in state["tool_trace"]
+        if event["name"] == "run_tests"
+        and event["result"].get("phase") == "candidate"
+    ]
+    assert candidate_statuses == ["fail", "pass"]
+    rollback = next(
+        event["result"]
+        for event in state["tool_trace"]
+        if event["name"] == "rollback_workspace"
+    )
+    assert rollback["changed_paths_after"] == []
+    assert rollback["post_diff_sha256"] == (
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    )
     assert "not an LLM score" in payload["sample_metadata"][
         "evaluation_note"
     ]
+    assert WINDOWS_ABSOLUTE_PATH.search(text) is None
+    assert UNIX_LOCAL_ABSOLUTE_PATH.search(text) is None
 
 
 def test_real_groq_sample_is_completed_clean_and_sanitized() -> None:
@@ -87,12 +130,18 @@ def test_real_groq_sample_is_completed_clean_and_sanitized() -> None:
     assert state["model"] == "openai/gpt-oss-120b"
     assert state["verification"]["passed"] is True
     assert metrics["evaluation_eligible"] is True
+    assert metrics["memory_assisted"] is False
     assert state["memory_hits"] == []
     assert metrics["memory_hits"] == 0
     assert metrics["read_tasks"] == 5
     assert metrics["max_active_read_workers"] == 3
     assert metrics["successful_read_workers"] == 4
-    assert metrics["elapsed_ms"] == 15370
+    assert metrics["elapsed_ms"] == 19923
+    assert state["patch_attempt"] == 1
+    assert metrics["patch_attempts"] == 1
+    assert state["rollback_count"] == 0
+    assert metrics["rollback_count"] == 0
+    assert state["repair_feedback"] is None
 
     failed_evidence = [
         item for item in state["evidence"] if item["status"] != "success"
@@ -102,9 +151,27 @@ def test_real_groq_sample_is_completed_clean_and_sanitized() -> None:
     assert failed_evidence[0]["result"]["reason"] == (
         "file does not exist: tests/.env"
     )
+    assert len(state["evidence"]) == 5
+    assert state["verification"]["passed"] is True
+
+    hidden_events = [
+        event
+        for event in state["tool_trace"]
+        if event["name"] == "hidden_tests"
+    ]
+    assert len(hidden_events) == 1
+    assert set(hidden_events[0]["result"]) == {
+        "status",
+        "returncode",
+        "duration_ms",
+        "output_sha256",
+    }
+    assert "output" not in hidden_events[0]["result"]
 
     assert WINDOWS_ABSOLUTE_PATH.search(text) is None
     assert WINDOWS_USER_DIRECTORY.search(text) is None
+    assert APPDATA_DIRECTORY.search(text) is None
+    assert UNIX_LOCAL_ABSOLUTE_PATH.search(text) is None
     assert API_KEY.search(text) is None
     assert NAMED_API_KEY.search(text) is None
     assert PROXY_SETTING.search(text) is None

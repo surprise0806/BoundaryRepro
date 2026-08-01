@@ -10,8 +10,10 @@ import groq
 import pytest
 
 from boundary_repro.repair.models import (
+    AttemptRecord,
     PatchProposal,
     ReadTask,
+    RepairFeedback,
     RepairPlan,
 )
 from boundary_repro.repair.providers import (
@@ -115,10 +117,36 @@ def assert_groq_strict_schema(value: Any, path: str = "$") -> None:
 
 
 def plan_context() -> dict[str, Any]:
+    feedback = RepairFeedback(
+        attempt=1,
+        failure_stage="public_tests",
+        summary="The first candidate failed its public assertion.",
+        patch_status="applied",
+        public_test_status="fail",
+        regression_test_status="fail",
+        public_test_output="public failure",
+        regression_test_output="regression failure",
+        changed_paths=["dotenv_loader.py"],
+        previous_diff_sha256="a" * 64,
+    )
+    history = AttemptRecord(
+        attempt=1,
+        proposal_summary="First candidate.",
+        changed_paths=["dotenv_loader.py"],
+        diff_sha256="a" * 64,
+        patch_status="applied",
+        public_test_status="fail",
+        regression_test_status="fail",
+        failure_stage="public_tests",
+    )
     return {
         "task": {"issue_text": "Investigate the public failure."},
         "baseline": {"status": "fail"},
         "memory_hits": [{"memory_id": "verified-memory"}],
+        "patch_attempt": 2,
+        "repair_feedback": feedback,
+        "attempt_history": [history],
+        "evidence": [{"tool": "read_file", "status": "success"}],
     }
 
 
@@ -160,6 +188,12 @@ def test_gpt_oss_plan_uses_strict_schema_without_native_tools(
     assert user_payload[
         "verified_memories_for_prioritization_only"
     ] == context["memory_hits"]
+    assert user_payload["patch_attempt"] == 2
+    assert user_payload["repair_feedback"]["failure_stage"] == (
+        "public_tests"
+    )
+    assert user_payload["prior_attempt_history"][0]["attempt"] == 1
+    assert user_payload["existing_read_only_evidence"] == context["evidence"]
     assert "schema" not in user_payload
     assert "output_schema" not in user_payload
     assert "allowed_read_tools" not in user_payload
@@ -187,6 +221,9 @@ def test_gpt_oss_patch_uses_checked_patch_schema(
             baseline={"status": "fail"},
             evidence=evidence,
             memory_hits=[],
+            patch_attempt=2,
+            repair_feedback=plan_context()["repair_feedback"],
+            attempt_history=plan_context()["attempt_history"],
         )
     )
 
@@ -204,6 +241,11 @@ def test_gpt_oss_patch_uses_checked_patch_schema(
 
     user_payload = json.loads(request["messages"][1]["content"])
     assert user_payload["read_only_evidence"] == evidence
+    assert user_payload["patch_attempt"] == 2
+    assert user_payload["repair_feedback"]["failure_stage"] == (
+        "public_tests"
+    )
+    assert user_payload["prior_attempt_history"][0]["attempt"] == 1
     assert "schema" not in user_payload
     assert "output_schema" not in user_payload
     assert "No tools are callable" in " ".join(user_payload["constraints"])

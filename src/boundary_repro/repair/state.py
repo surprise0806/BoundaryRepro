@@ -45,6 +45,12 @@ class RepairState(TypedDict, total=False):
     evidence: Annotated[list[dict[str, Any]], merge_records]
     patch_proposal: dict[str, Any] | None
     patch_result: dict[str, Any] | None
+    patch_attempt: int
+    repair_feedback: dict[str, Any] | None
+    attempt_history: list[dict[str, Any]]
+    candidate_verification: dict[str, Any] | None
+    patch_diff_history: list[str]
+    rollback_count: int
     verification: dict[str, Any] | None
     status: str
     metrics: dict[str, Any]
